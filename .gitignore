@@ -36,3 +36,6 @@ docs
 CLAUDE.md
 AGENTS.md
 .agents/
+
+# 判定エンジンの検証サンプル（ローカルのみ）
+back/src/eval_data/
