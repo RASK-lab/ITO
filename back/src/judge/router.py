@@ -9,6 +9,7 @@ from pathlib import Path
 
 import numpy as np
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import HTMLResponse
 
 from . import combine, render
 from .geometry.score import evaluate
@@ -67,6 +68,14 @@ def get_reference(char: Target) -> dict:
         return raw_reference(char)
     except KeyError:
         raise HTTPException(status_code=404, detail="お手本がありません")
+
+
+@router.get("/dev/playground", response_class=HTMLResponse, include_in_schema=False)
+def playground() -> str:
+    """手書きで判定を試す確認ページ（DEV=1 のときだけ有効）。"""
+    if not settings.dev:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return (Path(__file__).resolve().parent / "playground.html").read_text(encoding="utf-8")
 
 
 @router.post("/dev/samples", summary="検証用サンプルの保存（DEV=1 のときだけ有効）")

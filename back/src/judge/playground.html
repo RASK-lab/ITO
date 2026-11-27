@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>判定エンジン 確認ページ</title>
+<style>
+  body { font-family: system-ui, "Yu Gothic", sans-serif; margin: 16px; color: #1a2130; background: #f5f7fa; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+  canvas { background: #fff; border: 1px solid #c9d1dd; border-radius: 8px; touch-action: none; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; align-items: center; }
+  button { padding: 6px 12px; border-radius: 6px; border: 1px solid #2c4f87; background: #2c4f87; color: #fff; cursor: pointer; }
+  button.sub { background: #fff; color: #2c4f87; }
+  .panel { background: #fff; border: 1px solid #dbe1ea; border-radius: 8px; padding: 12px 16px; min-width: 300px; max-width: 560px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  td { padding: 3px 6px; border-bottom: 1px solid #eef1f6; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .big { font-size: 40px; font-weight: 700; }
+  pre { font-size: 11px; max-height: 300px; overflow: auto; background: #eef1f6; padding: 8px; border-radius: 6px; }
+  .muted { color: #5a6476; font-size: 13px; }
+  .bar { height: 8px; background: #2c4f87; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>判定エンジン 確認ページ（開発用）</h1>
+<div class="controls">
+  <label>お題 <select id="target"><option>十</option><option>都</option><option>戸</option><option>徒</option><option>ト</option><option>と</option></select></label>
+  <label>意図 <select id="intent">
+    <option value="chikarazuyosa">力強く</option><option value="yasashisa">やさしく</option>
+    <option value="teinei" selected>丁寧に</option><option value="genki">元気よく</option><option value="yuuga">優雅に</option>
+  </select></label>
+  <label><input type="checkbox" id="showRef" checked> お手本を薄く表示</label>
+</div>
+<div class="row">
+  <div>
+    <canvas id="c" width="420" height="420"></canvas>
+    <div class="controls">
+      <button id="geo">幾何スコア</button>
+      <button id="full">伊藤先生に見せる（LLM）</button>
+      <button class="sub" id="undo">1画戻す</button>
+      <button class="sub" id="clear">消す</button>
+      <button class="sub" id="save">サンプル保存</button>
+    </div>
+    <p class="muted" id="status">マウス・指・ペンで書いてください。</p>
+  </div>
+  <div class="panel" id="result"><p class="muted">ここに結果が出ます。</p></div>
+</div>
+
+<script>
+const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+let strokes = [], cur = null, t0 = null, ref = null;
+const $ = (id) => document.getElementById(id);
+
+async function loadRef() {
+  ref = await (await fetch(`/api/refs/${encodeURIComponent($("target").value)}`)).json();
+  draw();
+}
+function draw() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if ($("showRef").checked && ref) {
+    ctx.strokeStyle = "rgba(44,79,135,.15)"; ctx.lineWidth = 18; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const m = 40, s = cv.width - 2 * m;
+    for (const st of ref.variants[0].strokes) {
+      ctx.beginPath();
+      st.points.forEach(([x, y], i) => i ? ctx.lineTo(m + x * s, m + y * s) : ctx.moveTo(m + x * s, m + y * s));
+      ctx.stroke();
+    }
+  }
+  ctx.strokeStyle = "#1a2130"; ctx.lineWidth = 8; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (const st of strokes.concat(cur ? [cur] : [])) {
+    ctx.beginPath();
+    st.points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+    if (st.points.length === 1) ctx.lineTo(st.points[0][0] + 0.1, st.points[0][1]);
+    ctx.stroke();
+  }
+}
+function pt(e) {
+  const r = cv.getBoundingClientRect();
+  if (t0 === null) t0 = e.timeStamp;
+  return [e.clientX - r.left, e.clientY - r.top, Math.round(e.timeStamp - t0), e.pressure || 0.5];
+}
+cv.addEventListener("pointerdown", (e) => {
+  cv.setPointerCapture(e.pointerId);
+  cur = { pointerType: e.pointerType || "mouse", points: [pt(e)] };
+  draw();
+});
+cv.addEventListener("pointermove", (e) => {
+  if (!cur) return;
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  for (const ev of evs) cur.points.push(pt(ev));
+  draw();
+});
+const end = () => { if (cur) { strokes.push(cur); cur = null; draw(); } };
+cv.addEventListener("pointerup", end);
+cv.addEventListener("pointercancel", end);
+
+function body() {
+  return { target: $("target").value, intent: $("intent").value,
+           canvas: { width: cv.width, height: cv.height }, strokes };
+}
+async function post(path) {
+  if (!strokes.length) { $("status").textContent = "まだ何も書かれていません。"; return null; }
+  $("status").textContent = "採点中…";
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body()) });
+  const json = await res.json();
+  $("status").textContent = res.ok ? `完了（${strokes.length}画）` : `エラー ${res.status}`;
+  return json;
+}
+const LABELS = { stroke_count: "画数", order: "書き順", direction: "運筆方向", shape: "形", balance: "バランス", line: "線質", endings: "止め・はね・払い" };
+const END = { tome: "止め", hane: "はね", harai: "払い", any: "—", unknown: "?" };
+function geoHtml(g) {
+  const rows = Object.entries(g.items).map(([k, v]) =>
+    `<tr><td>${LABELS[k]}</td><td style="width:45%"><div class="bar" style="width:${v}%"></div></td><td class="n">${v}</td></tr>`).join("");
+  const per = g.per_stroke.map(p =>
+    `<tr><td>${p.stroke}画目</td><td>${p.matched_user_stroke ? p.matched_user_stroke + "画目に対応" : "対応なし"}${p.reversed ? "（逆向き）" : ""}</td>` +
+    `<td class="n">${p.shape ?? "-"}</td><td>${END[p.ending.expected]} → ${END[p.ending.detected]}</td></tr>`).join("");
+  return `<table>${rows}</table>
+    <p class="muted">お手本 ${g.ref_stroke_count}画 / あなた ${g.user_stroke_count}画</p>
+    <table><tr><td>お手本</td><td>対応</td><td class="n">形</td><td>終筆（正解 → 判定）</td></tr>${per}</table>`;
+}
+$("geo").onclick = async () => {
+  const g = await post("/api/judge/geometry"); if (!g) return;
+  $("result").innerHTML = g.detail ? `<pre>${JSON.stringify(g, null, 2)}</pre>` :
+    `<div class="muted">幾何スコア</div><div class="big">${g.total}</div>${geoHtml(g)}`;
+};
+$("full").onclick = async () => {
+  const r = await post("/api/judge/full"); if (!r) return;
+  if (r.detail) { $("result").innerHTML = `<pre>${JSON.stringify(r, null, 2)}</pre>`; return; }
+  const l = r.llm;
+  const llm = r.degraded && !l.read_as ? `<p class="muted">LLM なし（APIキー未設定または失敗）。幾何スコアのみで採点。</p>` :
+    `<p><b>伊藤先生には「${l.read_as ?? "?"}」に見えた</b>（確信度 ${l.confidence ?? "-"}）　印象: ${l.impressions.join("、")}</p>
+     <p>意図スコア: ${l.intent_score ?? "-"}　美しさ: ${l.beauty ? Object.values(l.beauty).join(" / ") : "-"}</p>
+     <p>良い点: ${l.good_point ?? ""}</p><p>講評: ${l.comment ?? ""}</p>
+     <ul>${l.corrections.map(c => `<li>${c.stroke}画目（${c.kind}）: ${c.issue}</li>`).join("")}</ul>`;
+  $("result").innerHTML = `<div class="muted">最終スコア${r.capped ? "（誤読のため上限）" : ""}</div><div class="big">${r.final}</div>
+    ${llm}<p class="muted">時間: 幾何 ${r.timings_ms.geometry}ms / LLM ${r.timings_ms.llm}ms</p>
+    <details><summary>幾何スコア ${r.geometry.total}</summary>${geoHtml(r.geometry)}</details>`;
+};
+$("undo").onclick = () => { strokes.pop(); if (!strokes.length) t0 = null; draw(); };
+$("clear").onclick = () => { strokes = []; t0 = null; draw(); $("result").innerHTML = '<p class="muted">ここに結果が出ます。</p>'; };
+$("save").onclick = async () => {
+  const label = window.prompt("ラベル（丁寧 / 普通 / 雑 など）", "") ?? "";
+  const r = await post(`/api/dev/samples?label=${encodeURIComponent(label)}`);
+  if (r && r.saved) $("status").textContent = `保存しました: ${r.saved}`;
+};
+$("target").onchange = loadRef;
+$("showRef").onchange = draw;
+loadRef();
+</script>
+</body>
+</html>
