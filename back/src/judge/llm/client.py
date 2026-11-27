@@ -1,4 +1,4 @@
-"""Claude 呼び出し。①ブラインド判読と②伊藤先生の講評を並列に実行する。"""
+"""Claude 呼び出し。①ブラインド判読と②AI講評（美しさの採点と講評）を並列に実行する。"""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import anthropic
 from anthropic import AsyncAnthropic
 
 from ..settings import settings
-from .prompts import BLIND_SYSTEM, SENSEI_SYSTEM, sensei_user_text
+from .prompts import BLIND_SYSTEM, REVIEW_SYSTEM, review_user_text
 from .schemas import BlindRead, Critique
 
 log = logging.getLogger(__name__)
@@ -68,10 +68,10 @@ async def critique(numbered_png: bytes, target: str, intent: str, geometry_json:
         model=settings.llm_model,
         max_tokens=4000,
         output_config={"effort": "low"},
-        system=SENSEI_SYSTEM,
+        system=REVIEW_SYSTEM,
         messages=[{
             "role": "user",
-            "content": [image_block(numbered_png), {"type": "text", "text": sensei_user_text(target, intent, geometry_json)}],
+            "content": [image_block(numbered_png), {"type": "text", "text": review_user_text(target, intent, geometry_json)}],
         }],
         output_format=Critique,
     )

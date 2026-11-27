@@ -73,7 +73,7 @@ def _fake_llm(read_as):
 
     async def crit(*a, **k):
         return Critique(balance=8, line_quality=7, endings=9, overall=8, good_point="縦画がまっすぐ",
-                        comment="なかなかじゃ", corrections=[Correction(stroke=2, kind="ending", issue="止めるのじゃ"),
+                        comment="よく書けています", corrections=[Correction(stroke=2, kind="ending", issue="しっかり止めましょう"),
                                                           Correction(stroke=99, kind="shape", issue="範囲外")])
     return blind, crit
 

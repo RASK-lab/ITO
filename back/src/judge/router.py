@@ -36,7 +36,7 @@ def judge_geometry(req: JudgeRequest) -> GeometryResult:
     return _geometry(req)
 
 
-@router.post("/judge/full", response_model=JudgeFullResponse, summary="幾何 + 伊藤先生（LLM）+ 統合スコア")
+@router.post("/judge/full", response_model=JudgeFullResponse, summary="幾何評価 + AI講評（LLM）+ 統合スコア")
 async def judge_full(req: JudgeRequest) -> JudgeFullResponse:
     t0 = time.perf_counter()
     geo = _geometry(req)
