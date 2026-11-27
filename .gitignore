@@ -1,0 +1,29 @@
+# Node.js
+node_modules/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Cloudflare
+.wrangler/
+
+# Environment variables
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+
+# Sample files
+!.env.example
+!.dev.vars.example
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
