@@ -33,3 +33,6 @@ Thumbs.db
 .claude/
 docs
 .ai/
+CLAUDE.md
+AGENTS.md
+.agents/
