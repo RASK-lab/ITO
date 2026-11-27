@@ -42,10 +42,11 @@ Swagger UI（`/docs`）に型が出ます。
 ## 開発（Docker）
 
 ```bash
+docker compose exec backend pip install pytest httpx   # 初回のみ（本番イメージには入れない）
 docker compose exec backend python -m pytest src/tests
 ```
 
-pytest などの開発用ライブラリは `back/requirements-dev.txt` にある（本番イメージには入れない）。
+開発用ライブラリの一覧は `back/requirements-dev.txt`（コンテナには `requirements.txt` しかコピーされないため、上のように個別に入れる）。
 
 ## 開発（Docker が使えない場合、`back/` で）
 
