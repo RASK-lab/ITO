@@ -1,0 +1,11 @@
+# 画ごとの終筆の正解（KanjiVG の画順どおり）
+#   tome  = 止め
+#   hane  = はね
+#   harai = 払い
+#   any   = 判定しない（字体や書き方で揺れる画）
+"十": [tome, tome]
+"ト": [tome, tome]
+"と": [tome, tome]
+"戸": [tome, tome, tome, harai]
+"徒": [harai, harai, tome, tome, tome, tome, tome, tome, harai, harai]
+"都": [tome, tome, tome, harai, tome, tome, tome, tome, any, hane, tome]

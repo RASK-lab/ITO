@@ -1,0 +1,5 @@
+# テスト・お手本生成用（本番イメージには入れない）
+-r requirements.txt
+pytest==9.2.0
+httpx==0.29.0
+svgpathtools==1.8.0
