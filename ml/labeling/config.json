@@ -1,0 +1,26 @@
+{
+  "label_set": "v1",
+  "question": "この「と」の印象に、いちばん近いのはどれですか？",
+  "classes": [
+    { "key": "kawaii", "label": "可愛い", "hint": "丸い、ころんとした、親しみやすい" },
+    { "key": "kakkoii", "label": "かっこいい", "hint": "シャープ、勢いがある、力強い" },
+    { "key": "teinei", "label": "丁寧", "hint": "整っている、落ち着いている、きちんとしている" },
+    { "key": "koseiteki", "label": "個性的", "hint": "癖・崩し・遊びがある、ほかと違う" }
+  ],
+  "special": [
+    { "key": "unsure", "label": "どれとも言えない", "hint": "どれにも当てはまらない・迷って決められない" },
+    { "key": "invalid", "label": "「と」に見えない", "hint": "別の字に見える、画像が壊れている" }
+  ],
+  "raters": ["ラベラー1", "ラベラー2", "ラベラー3", "ラベラー4"],
+  "target_ratings": {
+    "default": 4,
+    "kuzushiji49": 2
+  },
+  "source_priority": {
+    "collect": 1,
+    "etl": 1,
+    "google_fonts": 1,
+    "local_fonts": 1,
+    "kuzushiji49": 2
+  }
+}
