@@ -19,7 +19,7 @@ BUSY_TIMEOUT_SECONDS = 10
 # 重なったときに、一部だけが長く待たされることがあるため。
 _WRITE_LOCK = threading.Lock()
 
-# sock_id から下の 6 列は、分析と一覧の機能ができてから使う
+# sock_id、font、reading、message、is_public は、分析と一覧の機能ができてから使う
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS drawings (
     id             TEXT PRIMARY KEY,
@@ -51,6 +51,7 @@ _DRAWING_COLUMNS = (
     "duration_ms",
     "stroke_count",
     "point_count",
+    "user_name",
 )
 
 

@@ -51,6 +51,11 @@ SMALL_SIZE = 256  # 深層学習用・一覧の小さい表示用
 # フロント（front/src/api/drawings.ts の TARGET）が送る字は、ここになければならない。
 TARGETS = ("と",)
 
+# ユーザーネームの決まり。フロント（front/src/userName.ts）と同じ値にする。
+MAX_USER_NAME_LENGTH = 15
+# 名前を入れずに進んだときの名前
+DEFAULT_USER_NAME = "User"
+
 # 線の座標の基準にする枠の一辺。端末の画面の大きさに関係なく、枠をこの大きさと
 # みなした座標で受け取る（保存する大きいほうの画像と同じ基準）。
 # フロント（WritingCanvas.tsx の STROKE_CANVAS_SIZE）と同じ値にする。
@@ -109,6 +114,10 @@ class StrokeData(BaseModel):
 
 class DrawingIn(StrokeData):
     model_config = ConfigDict(allow_inf_nan=False)
+
+    # 書いた人のユーザーネーム。送られなかったり空だったりしたら DEFAULT_USER_NAME にする。
+    # 長さは、前後の空白を取ってから下で確かめる。
+    user_name: str = Field(default="", max_length=200)
 
     image: str = Field(max_length=MAX_IMAGE_CHARS)
     # 送った画像の大きさの申告。実物と合っているかは、下で確かめる。
@@ -178,6 +187,11 @@ def create_drawing(drawing: DrawingIn) -> DrawingOut:
         raise HTTPException(
             422, f"canvas は {CANVAS_SIZE} × {CANVAS_SIZE} で送ってください"
         )
+    user_name = drawing.user_name.strip() or DEFAULT_USER_NAME
+    if len(user_name) > MAX_USER_NAME_LENGTH:
+        raise HTTPException(
+            422, f"user_name は {MAX_USER_NAME_LENGTH} 文字までにしてください"
+        )
     point_count = sum(len(stroke.points) for stroke in drawing.strokes)
     if point_count > MAX_POINTS:
         raise HTTPException(422, f"点の合計は {MAX_POINTS} 個までにしてください")
@@ -214,6 +228,7 @@ def create_drawing(drawing: DrawingIn) -> DrawingOut:
         "duration_ms": drawing.strokes[-1].points[-1][2],
         "stroke_count": len(drawing.strokes),
         "point_count": point_count,
+        "user_name": user_name,
     }
     objects = {
         record["image_1024_key"]: to_png(gray, LARGE_SIZE),
