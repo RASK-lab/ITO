@@ -17,8 +17,12 @@ ITO にある API を、1 枚で見渡すための一覧です。送る内容と
 | PUT | `/api/drawings/{id}/card` | 結果 1 件ぶんの、X のカード用の画像（1200 × 630 の JPEG）を預かり、シェア用のページのパスを返す | シェアの画面を開いたとき（`front/src/api/share.ts`） | `back/src/share.py` | 動く（手元で確認。本番では未確認） |
 | GET | `/api/cards/{id}.jpg` | 預かったカードの画像を返す | X などのロボット（シェア用のページに書いた `og:image`） | `back/src/share.py` | 同上 |
 | GET | `/api/share/{id}` | 結果 1 件ぶんの、シェア用のページ（HTML）。カードの指定（OGP）が書いてある。人が開くと最初の画面に移る | X に投稿されたアドレス。X などのロボットと、投稿を見た人 | `back/src/share.py` | 同上 |
+| GET | `/api/label/config` | 学習データのラベル付けの設定（印象の種類） | ラベル付けの画面（`front/public/label/index.html`、アドレスは `/label/`） | `back/src/labeling.py` | 動く |
+| GET | `/api/label/next` | 次にラベルを付ける画像（合言葉が要る。以下同じ） | 同上 | 同上 | 動く |
+| POST | `/api/label/labels` | ラベルを 1 つ記録する（R2 に置く） | 同上 | 同上 | 動く |
+| GET | `/api/label/mine`、`/api/label/stats`、`/api/label/export` | 自分が付けたラベル、集計、すべてのラベルの書き出し | 同上、`ml/tools/export_dataset.py` | 同上 | 動く |
 
-くわしい形: [api.md の POST /api/drawings](api.md#post-apidrawings)、[api.md の「シェア」](api.md#シェア結果ごとのカード)
+くわしい形: ラベル付けは [ml/README.md](../ml/README.md)、[api.md の POST /api/drawings](api.md#post-apidrawings)、[api.md の「シェア」](api.md#シェア結果ごとのカード)
 
 ## 2. 分析側のブランチにあるもの（まだ取り込んでいない）
 
