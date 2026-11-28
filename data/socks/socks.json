@@ -802,6 +802,146 @@
           "reason": "白銀の絹に墨色と金の線が大きく弧を描き、細く鋭い先端へ流れている。"
         }
       }
+    },
+    {
+      "id": "RARE-01",
+      "level": 7,
+      "rarity": "幻",
+      "name": "片方だけの靴下",
+      "comment": "灰色のウールで編まれた靴下が一足のうち片方だけで、相方を探すように佇んでいる。",
+      "image": "/socks/rare-01.webp",
+      "classification": {
+        "special": "not_to",
+        "review": {
+          "reason": "「と」らしい形を書かなかったため、どこか片手落ちな一足が届いた。"
+        }
+      }
+    },
+    {
+      "id": "RARE-02",
+      "level": 7,
+      "rarity": "幻",
+      "name": "一筆書きの糸靴下",
+      "comment": "生成りの細い糸が一本、途切れることなくくるくると巻かれてできた不思議な靴下。",
+      "image": "/socks/rare-02.webp",
+      "classification": {
+        "special": "one_stroke",
+        "review": {
+          "reason": "一筆で書ききった潔さが、一本の糸でできた靴下を呼び寄せた。"
+        }
+      }
+    },
+    {
+      "id": "RARE-03",
+      "level": 7,
+      "rarity": "幻",
+      "name": "裏返しの靴下",
+      "comment": "縫い目が外側に出た状態のまま仕立てられた靴下で、内側の模様が表に現れている。",
+      "image": "/socks/rare-03.webp",
+      "classification": {
+        "special": "reversed_order",
+        "review": {
+          "reason": "筆順が逆だったため、すべてが裏返しになった一足が届いた。"
+        }
+      }
+    },
+    {
+      "id": "RARE-04",
+      "level": 7,
+      "rarity": "幻",
+      "name": "毛玉だらけの靴下",
+      "comment": "濃い紺色のウールの表面に、小さな毛玉が無数に集まってぎっしりと並んでいる。",
+      "image": "/socks/rare-04.webp",
+      "classification": {
+        "special": "many_taps",
+        "review": {
+          "reason": "何度もタップを重ねた点の多さが、毛玉をびっしりと育てた。"
+        }
+      }
+    },
+    {
+      "id": "RARE-05",
+      "level": 7,
+      "rarity": "幻",
+      "name": "金糸の礼装靴下",
+      "comment": "深紅の絹地に金の糸が市松模様に織り込まれた、まるで宮廷の礼装のような靴下。",
+      "image": "/socks/rare-05.webp",
+      "classification": {
+        "special": "marketplace",
+        "review": {
+          "reason": "丁寧すぎるほど丁寧に書いたことで、市場に出回らぬほど豪華な靴下が届いた。"
+        }
+      }
+    },
+    {
+      "id": "RARE-06",
+      "level": 7,
+      "rarity": "幻",
+      "name": "虫取り網の靴下",
+      "comment": "薄い網目状の生地に小さな虫と虫取り網の刺繍が施された、夏の野原を思わせる靴下。",
+      "image": "/socks/rare-06.webp",
+      "classification": {
+        "special": "very_fast",
+        "review": {
+          "reason": "0.5秒未満で書き終えた速さが、素早く飛び回る虫を捕まえる靴下を呼んだ。"
+        }
+      }
+    },
+    {
+      "id": "RARE-07",
+      "level": 7,
+      "rarity": "幻",
+      "name": "編みかけの靴下",
+      "comment": "途中まで編まれた状態で棒針がそのまま刺さったままになっている、未完成の靴下。",
+      "image": "/socks/rare-07.webp",
+      "classification": {
+        "special": "very_slow",
+        "review": {
+          "reason": "60秒以上かけてゆっくりと書いたことで、まだ編み途中の靴下が届いた。"
+        }
+      }
+    },
+    {
+      "id": "RARE-08",
+      "level": 7,
+      "rarity": "幻",
+      "name": "ベビーソックス",
+      "comment": "手のひらに乗るほど小さな白いベビーソックスで、つま先に小さな星の刺繍がある。",
+      "image": "/socks/rare-08.webp",
+      "classification": {
+        "special": "very_small",
+        "review": {
+          "reason": "キャンバスの5%にも満たない小さな「と」が、赤ちゃん用の靴下を呼び寄せた。"
+        }
+      }
+    },
+    {
+      "id": "RARE-09",
+      "level": 7,
+      "rarity": "幻",
+      "name": "はみ出しルーズソックス",
+      "comment": "大きすぎてくしゃくしゃに折れ重なった白いルーズソックスで、縁が幾重にも垂れている。",
+      "image": "/socks/rare-09.webp",
+      "classification": {
+        "special": "very_large",
+        "review": {
+          "reason": "キャンバスいっぱいにはみ出した大きな「と」が、はみ出したルーズソックスを届けた。"
+        }
+      }
+    },
+    {
+      "id": "RARE-10",
+      "level": 7,
+      "rarity": "幻",
+      "name": "虹色の靴下",
+      "comment": "赤から紫まで10色の糸が均等に編み込まれた、どの角度から見ても美しい虹色の靴下。",
+      "image": "/socks/rare-10.webp",
+      "classification": {
+        "special": "balanced",
+        "review": {
+          "reason": "10個の特別条件のどれにも当てはまらない、バランスのとれた「と」が虹色の靴下を引き寄せた。"
+        }
+      }
     }
   ],
   "classification": {
