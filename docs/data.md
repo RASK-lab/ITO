@@ -12,6 +12,7 @@
 | 書かれた「と」の画像（大小 2 枚） | オブジェクト置き場（Cloudflare R2） | フォルダ `back/data/objects/` | キー `drawings/<id>_1024.png`、`drawings/<id>_256.png` |
 | 書かれた「と」の線のデータ | オブジェクト置き場（Cloudflare R2） | フォルダ `back/data/objects/` | キー `drawings/<id>.json.gz` |
 | 「と」の台帳（いつ、どの画像、分析結果） | データベース（Cloudflare D1） | SQLite のファイル `back/data/ito.sqlite3` | 表 `drawings` |
+| シェア用のカードの画像（結果 1 件に 1 枚。シェアの画面を開いた結果だけ） | オブジェクト置き場（Cloudflare R2） | フォルダ `back/data/objects/` | キー `cards/<id>.jpg` |
 | 学習データの「と」（指示、申告、線のデータ） | データベース（Cloudflare D1） | 同じ SQLite のファイル | 表 `collect_samples`（[collect.md](collect.md)） |
 | 学習データの「と」の画像 | オブジェクト置き場（Cloudflare R2） | フォルダ `back/data/objects/` | キー `collect/<id>_1024.png`、`collect/<id>_256.png` |
 
@@ -19,7 +20,7 @@
 
 - 画像のような大きいファイルは、データベースに入れない。オブジェクト置き場に入れ、データベースにはその名前（キー）だけを書く。
 - くつしたは増えない固定のものなので、データベースにもオブジェクト置き場にも入れず、コードと一緒に Git で管理する。
-- 手元の代わり（フォルダと SQLite）は、本番と同じキー・同じ表の形にしてある。差し替える場所は `back/src/storage.py`（オブジェクトを置く・消す）と `back/src/db.py`（台帳に書く）の 2 つだけ。`back/src/drawings.py` は、この 2 つを呼ぶだけで、ファイルの場所や SQL を知らない。
+- 手元の代わり（フォルダと SQLite）は、本番と同じキー・同じ表の形にしてある。差し替える場所は `back/src/storage.py`（オブジェクトを置く・消す・読む）と `back/src/db.py`（台帳に書く・読む）の 2 つだけ。`back/src/drawings.py` と `back/src/share.py` は、この 2 つを呼ぶだけで、ファイルの場所を知らない。
 - 本番の置き場（R2 と D1）には、まだつないでいない。
 
 Docker では `back/data/` はコンテナ内の `/app/data/` で、いまの `compose.yaml` では PC 側とつないでいないため、コンテナを作り直すと消えます。場所は環境変数 `ITO_DATA_DIR` で変えられます。
@@ -119,6 +120,22 @@ data = json.loads(gzip.decompress(open("<id>.json.gz", "rb").read()))
 
 `target` の列を足したときも、移行の仕組みは作っていません。手元の台帳は開発用なので、`target` の列がない古い `ito.sqlite3` が残っていたら、消して作り直してください（`docker compose exec backend rm data/ito.sqlite3`）。
 
+### シェア用のカードの画像
+
+結果の画面でシェアの画面を開くと、フロントが X のカード用の画像を作って送り、バックエンド（`PUT /api/drawings/{id}/card`）が置きます。くわしい形は [api.md の「シェア」](api.md#シェア結果ごとのカード) にあります。
+
+| キー | 中身 | 使いみち |
+|---|---|---|
+| `cards/<id>.jpg` | 1200 × 630 ピクセルの JPEG。くつした、書いた「と」、レアリティ、名前が入っている | X などに投稿されたアドレス（`/api/share/<id>`）のカードとして出す（`GET /api/cards/<id>.jpg` で配る） |
+
+- `<id>` は、記録の ID（表 `drawings` の `id`）と同じ。台帳に列は足していない（キーは `id` から決まる）。
+- フロントがブラウザで作った画像を、中身を変えずに置く。1 枚あたり 40〜200KB ほど（上限は 1,000,000 バイト）。
+- 置くのは、台帳に `id` の記録があるときだけ。一度置いた画像は、置き換えない（同じ `id` に何度送られても、最初の 1 枚が残る）。
+- シェアの画面を開かなかった結果には、カードの画像はない。
+- 題と説明に使うくつしたは、台帳の `sock_id` から引く（`SELECT sock_id FROM drawings WHERE id = ?`）。
+- 中身はフロントが作るので、バックエンドは「1200 × 630 の JPEG であること」までしか確かめていない（何が描いてあるかは確かめられない）。
+- 消す仕組みは、まだない。
+
 ### 書く順番と、失敗したとき
 
 1. 仮の結果（くつしたとメッセージ）を作る。ここでは何も置かない。
@@ -155,15 +172,16 @@ docker compose exec backend python -c "import gzip; print(gzip.decompress(open('
 | なし（手元） | フォルダ `back/data/objects/` と SQLite `back/data/ito.sqlite3` |
 | あり（本番。例: `http://ito.store`） | Worker 経由で R2 と D1 |
 
-バックエンドが Worker に頼む口は、次の 3 つです（仮。インフラ担当と合わせて決める）。どれも、成功なら 2xx を返します。
+バックエンドが Worker に頼む口は、次の 4 つです（Worker 側は `infra/cloudflare/worker.ts`）。どれも、成功なら 2xx を返します。
 
 | メソッドとパス | 本文 | Worker がすること |
 |---|---|---|
 | `PUT <ITO_STORE_URL>/objects/<キー>` | ファイルの中身そのまま | R2 に、そのキーで置く |
 | `DELETE <ITO_STORE_URL>/objects/<キー>` | なし | R2 から消す（無くても成功にする） |
-| `POST <ITO_STORE_URL>/db/query` | `{"sql": "INSERT INTO … VALUES (?, ?, …)", "params": [値, …]}` | `sql` に `params` を順に当てはめて、D1 で実行する |
+| `GET <ITO_STORE_URL>/objects/<キー>` | なし | R2 から読んで、中身をそのまま返す（無ければ 404）。シェア用のカードの画像で使う |
+| `POST <ITO_STORE_URL>/db/query` | `{"sql": "INSERT INTO … VALUES (?, ?, …)", "params": [値, …]}` | `sql` に `params` を順に当てはめて、D1 で実行し、`{"results": [行, …]}` を返す。通す SQL は `INSERT INTO drawings …` と `SELECT …` だけ（シェア用のページが、`SELECT` で `sock_id` を引く） |
 
-- キーは `drawings/<id>_1024.png` のような形で、手元と同じです。
+- キーは `drawings/<id>_1024.png`、`cards/<id>.jpg` のような形で、手元と同じです。「と」の画像と、シェア用のカードの画像は、同じバケットに入ります（キーの先頭で分かれる）。
 - D1 の表は、`back/src/db.py` の `SCHEMA` で先に作っておきます（本番では、バックエンドは表を作りません）。
 - 実装は `back/src/storage.py` と `back/src/db.py` にあります。実際の Worker とつないだ確認は、まだしていません。
 

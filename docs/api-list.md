@@ -14,10 +14,13 @@ ITO にある API を、1 枚で見渡すための一覧です。送る内容と
 |---|---|---|---|---|---|
 | GET | `/api/health` | バックエンドが動いているかの確認 | 確認用（画面からは呼ばない） | `back/src/main.py` | 動く |
 | POST | `/api/drawings` | 書いた「と」（線のデータ、画像、ユーザーネーム）を受け取って保存し、結果（くつしたとメッセージ）を返す | 書く画面の「確定」（`front/src/api/drawings.ts`） | `back/src/drawings.py` | 動く。結果は仮（無作為のくつした）。保存先は手元の代わり |
+| PUT | `/api/drawings/{id}/card` | 結果 1 件ぶんの、X のカード用の画像（1200 × 630 の JPEG）を預かり、シェア用のページのパスを返す | シェアの画面を開いたとき（`front/src/api/share.ts`） | `back/src/share.py` | 動く（手元で確認。本番では未確認） |
+| GET | `/api/cards/{id}.jpg` | 預かったカードの画像を返す | X などのロボット（シェア用のページに書いた `og:image`） | `back/src/share.py` | 同上 |
+| GET | `/api/share/{id}` | 結果 1 件ぶんの、シェア用のページ（HTML）。カードの指定（OGP）が書いてある。人が開くと最初の画面に移る | X に投稿されたアドレス。X などのロボットと、投稿を見た人 | `back/src/share.py` | 同上 |
 | GET | `/api/collect/plan` | 学習データ集めの 1 回分（6 個）の、書いてもらう順番と指示を返す | 学習データ集めの画面（`front/src/api/collect.ts`） | `back/src/collect.py` | 動く（手元） |
 | POST | `/api/collect/samples` | 学習データの「と」を 1 つ記録する（指示、利き手などの申告、線のデータ、画像） | 同上 | `back/src/collect.py` | 動く（手元）。本番は Worker と D1 の変更待ち |
 
-くわしい形: [api.md の POST /api/drawings](api.md#post-apidrawings)、学習データ集めは [collect.md](collect.md)（送る内容は `back/src/collect.py` の `CollectSampleIn`）
+くわしい形: [api.md の POST /api/drawings](api.md#post-apidrawings)、[api.md の「シェア」](api.md#シェア結果ごとのカード)、学習データ集めは [collect.md](collect.md)（送る内容は `back/src/collect.py` の `CollectSampleIn`）
 
 ## 2. 分析側のブランチにあるもの（まだ取り込んでいない）
 
@@ -41,7 +44,8 @@ ITO にある API を、1 枚で見渡すための一覧です。送る内容と
 |---|---|---|---|---|
 | PUT | `<ITO_STORE_URL>/objects/<キー>` | R2 にファイルを置く | ファイルの中身 | `back/src/storage.py` |
 | DELETE | `<ITO_STORE_URL>/objects/<キー>` | R2 から消す（無くても成功） | なし | `back/src/storage.py` |
-| POST | `<ITO_STORE_URL>/db/query` | D1 で SQL を実行する | `{"sql": "…", "params": […]}` | `back/src/db.py` |
+| GET | `<ITO_STORE_URL>/objects/<キー>` | R2 から読む（無ければ 404）。カードの画像を返すときと、あるかを確かめるときに使う | なし | `back/src/storage.py` |
+| POST | `<ITO_STORE_URL>/db/query` | D1 で SQL を実行する。`INSERT INTO drawings …` と `SELECT …` だけ。返事は `{"results": [行, …]}` | `{"sql": "…", "params": […]}` | `back/src/db.py` |
 
 くわしい説明: [data.md の「本番での保存先の切り替え」](data.md)
 

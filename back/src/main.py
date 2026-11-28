@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 
 from src.collect import router as collect_router
 from src.drawings import router as drawings_router
+from src.share import router as share_router
 
 app = FastAPI(
     title="ITO API",
@@ -11,6 +12,7 @@ app = FastAPI(
 )
 
 app.include_router(drawings_router)
+app.include_router(share_router)
 # 学習データ集め（docs/collect.md）
 app.include_router(collect_router)
 

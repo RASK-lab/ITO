@@ -10,7 +10,9 @@
     POST <ITO_STORE_URL>/db/query
     本文（JSON）: {"sql": "INSERT INTO … VALUES (?, ?, …)", "params": [値, 値, …]}
 
-Worker は、sql を params の順に当てはめて D1 で実行し、成功なら 2xx を返す。
+Worker は、sql を params の順に当てはめて D1 で実行し、成功なら 2xx で
+{"results": [行, …]} を返す（行は、列の名前と値の組。SELECT 以外では空）。
+通す SQL は、INSERT INTO drawings … と SELECT … だけ。
 D1 の表は、下の SCHEMA で先に作っておく（本番では、このファイルは表を作らない）。
 """
 
@@ -109,11 +111,10 @@ def _connect() -> sqlite3.Connection:
     return connection
 
 
-def _query_store(sql: str, params: list) -> list[dict]:
-    """Worker に頼んで、D1 で SQL を実行する。2xx 以外や、つながらないときは例外になる。
+def _query_store(sql: str, params: list) -> bytes:
+    """Worker に頼んで、D1 で SQL を実行し、応答の本文を返す。
 
-    返り値は、SELECT のときの行（列の名前をキーにした dict の並び）。Worker は
-    {"results": [...]} を返す（infra/cloudflare/worker.ts）。
+    2xx 以外や、つながらないときは例外になる。
     """
     request = urllib.request.Request(
         f"{STORE_URL}/db/query",
@@ -122,10 +123,7 @@ def _query_store(sql: str, params: list) -> list[dict]:
         method="POST",
     )
     with urllib.request.urlopen(request, timeout=STORE_TIMEOUT_SECONDS) as response:
-        body = response.read()
-    if not body:
-        return []
-    return json.loads(body).get("results") or []
+        return response.read()
 
 
 def insert_drawing(record: dict) -> None:
@@ -143,6 +141,17 @@ def insert_drawing(record: dict) -> None:
         connection.execute(
             f"INSERT INTO drawings ({columns}) VALUES ({placeholders})", record
         )
+
+
+def get_sock_id(drawing_id: str) -> str | None:
+    """記録の ID から、結果のくつしたの ID を引く。記録が無ければ None。"""
+    sql = "SELECT sock_id FROM drawings WHERE id = ?"
+    if STORE_URL:
+        rows = json.loads(_query_store(sql, [drawing_id]))["results"]
+        return rows[0]["sock_id"] if rows else None
+    with closing(_connect()) as connection:
+        row = connection.execute(sql, (drawing_id,)).fetchone()
+    return row[0] if row else None
 
 
 # ---------- 学習データ集め（back/src/collect.py） ----------
@@ -199,7 +208,7 @@ def count_collect_conditions(protocol: str, pointer_type: str) -> dict[str, int]
         " WHERE protocol = ? AND pointer_type = ? GROUP BY condition"
     )
     if STORE_URL:
-        rows = _query_store(sql, [protocol, pointer_type])
+        rows = json.loads(_query_store(sql, [protocol, pointer_type]))["results"]
         return {row["condition"]: int(row["n"]) for row in rows}
     with closing(_connect()) as connection:
         rows = connection.execute(sql, (protocol, pointer_type)).fetchall()
