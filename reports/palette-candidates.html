@@ -1,0 +1,173 @@
+<title>ITO カラーパレット候補</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: 1 候補 = 1 段。左に色票（役割つき）、右に「書く画面」と「届いた手紙」の見本を並べる。狭い幅では縦に積む。 */
+:root {
+  --page: #f1f0ec; --panel: #fbfaf7; --text: #23262b; --muted: #5b6068; --rule: #d6d3cb; --mark: #3b5068;
+  --f-display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --f-hand: "Klee One", "Hiragino Maru Gothic ProN", cursive;
+  --f-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #17181b; --panel: #202226; --text: #e9e7e1; --muted: #a3a6ad; --rule: #3a3d43; --mark: #9db4cf; color-scheme: dark } }
+:root[data-theme="dark"] { --page: #17181b; --panel: #202226; --text: #e9e7e1; --muted: #a3a6ad; --rule: #3a3d43; --mark: #9db4cf; color-scheme: dark }
+
+body { background: var(--page); color: var(--text); font-family: var(--f-body); font-size: 15px; line-height: 1.75; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 40px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 40px; }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(26px, 4.4vw, 38px); line-height: 1.3; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--f-display); font-weight: 700; font-size: 24px; line-height: 1.35; margin: 0; }
+h3 { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--muted); margin: 0; }
+p { margin: 0; max-width: 62ch; }
+.lead { display: flex; flex-direction: column; gap: 14px; }
+.lead p { color: var(--muted); }
+.pick { border-left: 3px solid var(--mark); padding-left: 14px; color: var(--text) !important; }
+.roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 24px; padding: 0; margin: 0; list-style: none; font-size: 13.5px; }
+.roles b { font-weight: 700; }
+.roles span { color: var(--muted); }
+
+.cand { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 24px; display: flex; flex-direction: column; gap: 22px; }
+.cand header { display: flex; flex-direction: column; gap: 6px; }
+.tag { font-size: 12px; font-weight: 700; letter-spacing: .1em; color: var(--mark); }
+.cand header p { color: var(--muted); }
+.body { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .body { grid-template-columns: minmax(0, 1fr); } }
+.col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+.sw { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.sw div { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 0 10px 0 0; font-size: 13px; background: var(--panel); border-top: 1px solid var(--rule); }
+.sw div:first-child { border-top: 0; }
+.sw i { display: block; height: 38px; border-right: 1px solid var(--rule); }
+.sw code { font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sw small { display: block; font-size: 11px; color: var(--muted); line-height: 1.3; }
+.note { font-size: 13px; color: var(--muted); }
+.note b { color: var(--text); }
+table { border-collapse: collapse; font-size: 12.5px; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 4px 8px 4px 0; border-bottom: 1px solid var(--rule); font-weight: 400; }
+th { color: var(--muted); font-weight: 500; }
+td.ok::after { content: " 可"; color: var(--muted); }
+td.ng::after { content: " 飾り専用"; color: var(--muted); }
+
+/* ここから下は各候補の色だけで描く見本。ページの明暗テーマには従わせない。 */
+.mocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+.m { background: var(--bg); color: var(--ink); border-radius: 18px; padding: 20px 18px 22px; display: flex; flex-direction: column; gap: 14px; border: 1px solid var(--line); min-width: 0; }
+.m .cap { font-size: 11px; letter-spacing: .14em; color: var(--soft); }
+.m h4 { font-family: var(--f-display); font-weight: 700; font-size: 20px; line-height: 1.4; margin: 0; color: var(--ink); }
+.m .sub { font-size: 13px; color: var(--soft); line-height: 1.6; }
+.pad { aspect-ratio: 1; max-width: 100%; background: var(--paper); border: 1px solid var(--line); border-radius: 3px; position: relative; display: grid; place-items: center; }
+.pad::before, .pad::after { content: ""; position: absolute; background: var(--guide); }
+.pad::before { left: 50%; top: 8%; bottom: 8%; width: 1px; }
+.pad::after { top: 50%; left: 8%; right: 8%; height: 1px; }
+.pad span { font-family: var(--f-hand); font-weight: 600; font-size: clamp(120px, 34vw, 168px); line-height: 1; color: var(--paperInk); position: relative; z-index: 1; transform: rotate(-3deg); }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.btn { font: 700 14px/1 var(--f-body); padding: 13px 20px; border-radius: 3px; border: 1px solid var(--primary); background: var(--primary); color: var(--onPrimary); letter-spacing: .06em; }
+.ghost { font: 500 14px/1 var(--f-body); padding: 13px 14px; border-radius: 3px; border: 1px solid var(--soft); background: transparent; color: var(--ink); }
+.letter { background: var(--paper); color: var(--paperInk); border: 1px solid var(--line); border-radius: 2px; padding: 20px 18px 18px; display: flex; flex-direction: column; gap: 12px; position: relative; box-shadow: 0 1px 0 var(--line), 0 10px 18px -14px var(--shade); }
+.letter .to { font-family: var(--f-display); font-weight: 700; font-size: 16px; }
+.letter p { font-family: var(--f-display); font-weight: 500; font-size: 14.5px; line-height: 2; max-width: none; }
+.letter hr { border: 0; border-top: 1px solid var(--gold); width: 100%; margin: 2px 0; opacity: .8; }
+.letter .sign { align-self: flex-end; font-family: var(--f-display); font-size: 13px; color: var(--paperSoft); }
+.seal { position: absolute; right: 14px; top: -14px; width: 40px; height: 40px; border-radius: 50%; background: var(--seal); box-shadow: inset 0 0 0 3px var(--sealRim), inset 0 0 0 4px var(--seal); display: grid; place-items: center; font-family: var(--f-display); font-weight: 700; font-size: 17px; color: var(--sealRim); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 4px 9px; border: 1px solid var(--secondary); color: var(--secondary); border-radius: 2px; }
+.link { font-size: 13px; color: var(--secondary); text-decoration: underline; text-underline-offset: 3px; }
+.goldt { font-size: 11px; letter-spacing: .16em; color: var(--goldText); }
+</style>
+
+<div class="wrap">
+  <div class="lead">
+    <h1>ITO カラーパレット候補</h1>
+    <p>調査で測った色（紙、インク、封蝋、制服の青、灯り）から、役割を 8 つに絞った配色を 4 案作りました。どの案も、文字と操作部品は読みやすさの基準（文字 4.5、部品 3）を満たす組み合わせだけで組んでいます。</p>
+    <p class="pick">第一候補は「B 郵便の青」です。測った画面の色の比率（生成り、青、金茶）に最も近く、赤と緑の見分けに頼らないので色覚の違いにも強い配色です。夜の表示が必要になったら「D 灯りの夜」を組み合わせられます。</p>
+    <ul class="roles">
+      <li><b>地</b> <span>画面全体の背景</span></li>
+      <li><b>面</b> <span>便箋やカードの紙</span></li>
+      <li><b>文字</b> <span>本文のインク</span></li>
+      <li><b>補助文字</b> <span>説明や注記</span></li>
+      <li><b>罫線</b> <span>区切りと枠（飾り）</span></li>
+      <li><b>主</b> <span>いちばん大事な操作</span></li>
+      <li><b>副</b> <span>リンクや分類の札</span></li>
+      <li><b>金</b> <span>飾り専用。文字には濃い金を使う</span></li>
+    </ul>
+  </div>
+  <div id="list" style="display:flex;flex-direction:column;gap:28px"></div>
+</div>
+
+<script>
+const P = [
+ { id:"A", name:"封筒と封蝋", idea:"生成りの封筒に黒茶のインク、封蝋の赤で封をする。手紙らしさが最も直接に出る案です。",
+   basis:"封筒の紙と封蝋、宛名のインクの実測値が土台です。",
+   caution:"「生成りに赤茶の差し色」は見慣れた組み合わせで、ありがちな印象になりやすい案です。副に紺を置いて締めています。",
+   t:{bg:"#ECE5D5",surface:"#FEFAEE",ink:"#1F1711",soft:"#5C4F42",line:"#C9BDA6",primary:"#8C3434",onPrimary:"#FEFAEE",secondary:"#2B3E51",gold:"#B4832F",goldText:"#7A5A1E",
+      paper:"#FEFAEE",paperInk:"#1F1711",paperSoft:"#5C4F42",seal:"#8E3636",sealRim:"#E9C9B4",guide:"#E3D9C4",shade:"#3A2A1A"} },
+ { id:"B", name:"郵便の青", idea:"紙の地に、制服の青をインクと主役の色に使う。金は飾りに、赤は小さな合図にとどめます。",
+   basis:"上着の青とその影、スカートの白、公式サイトの金の実測値が土台です。",
+   caution:"落ち着いて知的に見える反面、甘さや華やかさは控えめです。花や封蝋の絵で温度を足す前提になります。",
+   t:{bg:"#F3EFE2",surface:"#FFFDF3",ink:"#22323F",soft:"#55657A",line:"#CFCBC2",primary:"#3B5068",onPrimary:"#FFFDF3",secondary:"#9A4243",gold:"#B39159",goldText:"#7A5F2C",
+      paper:"#FFFDF3",paperInk:"#22323F",paperSoft:"#55657A",seal:"#9A4243",sealRim:"#F0D5C4",guide:"#E6E1D2",shade:"#22323F"} },
+ { id:"C", name:"すみれの便り", idea:"白い紙に菫色を主役として置く。名前から連想する印象に最も近い、澄んだ案です。",
+   basis:"菫色の和名の値と、劇場版サイトの青紫と白い紙が土台です。",
+   caution:"測った画面では紫は全体の 1% 未満で、実際の作品は紫の世界ではありません。雰囲気より名前の印象を優先する案です。菫と青紫は色覚によっては同じ色に見えるので、色だけで区別しない設計が要ります。",
+   t:{bg:"#F7F5F1",surface:"#FFFFFF",ink:"#292929",soft:"#5F5B66",line:"#D1D4ED",primary:"#5B4690",onPrimary:"#FFFFFF",secondary:"#4F58A8",gold:"#B39159",goldText:"#7A5F2C",
+      paper:"#FFFFFF",paperInk:"#292929",paperSoft:"#5F5B66",seal:"#5B4690",sealRim:"#DAD3EE",guide:"#E9E8F3",shade:"#2A2440"} },
+ { id:"D", name:"灯りの夜", idea:"暗い机の上で、灯りに照らされた便箋だけが明るい。夜に手紙を書く場面の案です。",
+   basis:"蝋燭の夜の場面（机、影、炎、照らされた便箋）の実測値が土台です。",
+   caution:"雰囲気は最も強い一方、昼の屋外では画面が見づらくなります。単独より、明るい案の夜版として使うのが向いています。",
+   t:{bg:"#16130F",surface:"#241C15",ink:"#F1E7D3",soft:"#B9A98F",line:"#4D3F30",primary:"#F2B866",onPrimary:"#16130F",secondary:"#D98A7E",gold:"#B39159",goldText:"#C9A873",
+      paper:"#EAD9B5",paperInk:"#2A1D12",paperSoft:"#5E4A33",seal:"#8C3434",sealRim:"#E6BFA6",guide:"#D8C59C",shade:"#000000"} },
+];
+const ROLES = [["bg","地"],["surface","面"],["ink","文字"],["soft","補助文字"],["line","罫線"],["primary","主"],["secondary","副"],["gold","金（飾り）"],["goldText","金（文字用）"]];
+function lum(h){const c=[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255).map(v=>v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4));return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2];}
+function cr(a,b){const x=lum(a),y=lum(b);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05);}
+const el=(tag,cls,html)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;};
+
+const list=document.getElementById("list");
+P.forEach(p=>{
+  const t=p.t, sec=el("section","cand");
+  sec.appendChild(el("header",null,`<span class="tag">候補 ${p.id}</span><h2>${p.name}</h2><p>${p.idea}</p>`));
+  const body=el("div","body");
+
+  const left=el("div","col");
+  left.appendChild(el("h3",null,"色と役割"));
+  const sw=el("div","sw");
+  ROLES.forEach(([k,label])=>{ sw.appendChild(el("div",null,`<i style="background:${t[k]}"></i><span>${label}</span><code>${t[k]}</code>`)); });
+  if(p.id==="D") sw.appendChild(el("div",null,`<i style="background:${t.paper}"></i><span>灯りの下の便箋</span><code>${t.paper}</code>`));
+  left.appendChild(sw);
+  left.appendChild(el("h3",null,"読みやすさ（地の上での濃淡差）"));
+  const rows=[["ink","文字"],["soft","補助文字"],["primary","主"],["secondary","副"],["goldText","金（文字用）"],["gold","金（飾り）"]]
+    .map(([k,l])=>{const v=cr(t[k],t.bg);return `<tr><td>${l}</td><td class="${v>=4.5?"ok":"ng"}">${v.toFixed(1)}</td></tr>`;}).join("");
+  left.appendChild(el("table",null,`<tr><th>色</th><th>比（4.5 以上で本文に使える）</th></tr>${rows}`));
+  left.appendChild(el("p","note",`<b>根拠</b> ${p.basis}`));
+  left.appendChild(el("p","note",`<b>気をつける点</b> ${p.caution}`));
+  body.appendChild(left);
+
+  const right=el("div","col");
+  right.appendChild(el("h3",null,"画面に当てはめた見本"));
+  const mocks=el("div","mocks");
+  Object.entries(t).forEach(([k,v])=>mocks.style.setProperty("--"+k,v));
+  mocks.appendChild(el("div","m",`
+    <span class="cap">書く</span>
+    <h4>「と」を、ひとつ書いてください</h4>
+    <div class="pad" role="img" aria-label="手書きの「と」が書かれた枠の見本"><span>と</span></div>
+    <span class="sub">指でもペンでも書けます。書き直しは何度でもできます。</span>
+    <div class="row"><span class="btn">この字を届ける</span><span class="ghost">書き直す</span></div>`));
+  mocks.appendChild(el("div","m",`
+    <span class="cap">届いた手紙</span>
+    <h4>お手紙が届きました</h4>
+    <div class="letter">
+      <span class="seal" aria-hidden="true">と</span>
+      <span class="goldt">あなたの「と」へ</span>
+      <span class="to">拝啓</span>
+      <p>一画目をゆっくり置いて、二画目で大きく息を吐くように払われたのですね。急がずに、けれど迷わずに書かれた字だとお見受けしました。</p>
+      <hr>
+      <div class="chips"><span class="chip">教科書体に近い</span><span class="chip">右上がり 4 度</span><span class="chip">余白ひろめ</span></div>
+      <span class="sign">代筆係より</span>
+    </div>
+    <div class="row"><span class="btn">もう一通書く</span><span class="link">読み解きの理由を見る</span></div>`));
+  right.appendChild(mocks);
+  right.appendChild(el("p","note","見本の文面と数値は例です。実際の分析結果ではありません。"));
+  body.appendChild(right);
+  sec.appendChild(body);
+  list.appendChild(sec);
+});
+</script>
