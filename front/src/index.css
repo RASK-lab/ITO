@@ -171,6 +171,7 @@ dialog.share::backdrop {
 
 .share-buttons h2,
 .share-buttons .share-note,
+.share-buttons .share-wide,
 .share-buttons button:last-of-type {
   grid-column: 1 / -1;
 }
