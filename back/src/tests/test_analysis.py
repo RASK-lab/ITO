@@ -138,3 +138,29 @@ def test_decided_sock_matches_rank_and_impression():
 def test_percentile_text():
     assert "上位" in population.describe("speed", 2.0, population.zscore("speed", 2.0))
     assert "計測できず" in population.describe("pressure", None, 0.0)
+
+
+def test_rare_sock_is_used_when_designed(monkeypatch):
+    rare_item = {"id": "RARE-TEST", "level": 7, "rarity": "幻", "name": "テストのレア", "comment": "説明",
+                 "image": "images/APEX-01.png", "classification": {"special": "reversed_order"}}
+    data = dict(catalog._data())
+    data["items"] = list(data["items"]) + [rare_item]
+    for f in (catalog._data, catalog._items, catalog._grid, catalog._rares):
+        f.cache_clear()
+    monkeypatch.setattr(catalog, "_data", lambda: data)
+    try:
+        assert catalog.check() == []
+        a = _analyze(from_reference("と", order=[1, 0]))
+        d = engine.decide(a, impression=None, ai_beauty=None, ai_is_to=True)
+        assert d["special"] == "reversed_order" and d["sock_id"] == "RARE-TEST" and d["rare"]
+        assert "テストのレア" in comments.template_comment(d["sock_id"], d["impression"], d["special"])
+    finally:
+        for f in (catalog._items, catalog._grid, catalog._rares):
+            f.cache_clear()
+
+
+def test_without_rare_designs_regular_sock_is_used():
+    a = _analyze(from_reference("と", order=[1, 0]))
+    d = engine.decide(a, impression=None, ai_beauty=None, ai_is_to=True)
+    assert d["special"] == "reversed_order" and not d["rare"]
+    assert not catalog.is_rare(catalog.item(d["sock_id"]))

@@ -87,8 +87,10 @@ def decide(a: Analysis, *, impression: str | None, ai_beauty: float | None, ai_i
         is_to=is_to, n_strokes=len(a.inp.kept), order_reversed=a.order_reversed,
         features=a.features, axis_scores=a.axes.scores, quality=q,
     )
+    # レア靴下のデザインがあればレアを優先、無ければ「印象 × 綺麗さ」の靴下
+    sid = catalog.rare_sock_id(special) or catalog.sock_id(rank, impression)
     return {
-        "sock_id": catalog.sock_id(rank, impression), "special": special, "impression": impression,
+        "sock_id": sid, "rare": catalog.rare_sock_id(special) is not None, "special": special, "impression": impression,
         "quality_score": round(q, 1), "quality_rank": rank, "is_to": is_to, "special_checks": checks,
     }
 

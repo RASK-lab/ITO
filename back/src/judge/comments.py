@@ -20,6 +20,9 @@ IMPRESSION_PHRASES = {
 
 def template_comment(sock_id: str, impression: str, special: str | None = None) -> str:
     it = catalog.item(sock_id)
+    if catalog.is_rare(it):
+        from .analysis.rare import NOTES
+        return f"{NOTES.get(special, '特別な書き方をした')}「と」です。その書きぶりが、レア靴下「{it['name']}」を呼びました。{it['comment']}"
     text = IMPRESSION_PHRASES[impression]
     text += f"その書きぶりが「{it['name']}」になりました。{it['comment']}"
     return text

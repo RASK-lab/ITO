@@ -36,13 +36,30 @@ def _items() -> dict[str, dict]:
     return {it["id"]: it for it in _data()["items"]}
 
 
+def is_rare(it: dict) -> bool:
+    """レア靴下は classification に feature/beauty の代わりに special（特別な書き方のキー）を持つ。"""
+    return "special" in it["classification"]
+
+
 @lru_cache(maxsize=1)
 def _grid() -> dict[tuple[str, int], str]:
     grid = {}
     for it in _data()["items"]:
+        if is_rare(it):
+            continue
         c = it["classification"]
         grid[(FEATURE_TO_IMPRESSION[c["feature"]], int(c["beauty"]))] = it["id"]
     return grid
+
+
+@lru_cache(maxsize=1)
+def _rares() -> dict[str, str]:
+    return {it["classification"]["special"]: it["id"] for it in _data()["items"] if is_rare(it)}
+
+
+def rare_sock_id(special: str | None) -> str | None:
+    """特別な書き方に対応するレア靴下の ID。まだデザインが無ければ None。"""
+    return _rares().get(special) if special else None
 
 
 def sock_id(quality_rank: int, impression: str) -> str:
@@ -86,14 +103,21 @@ def description(sid: str) -> dict:
         "名前": it["name"],
         "レアリティ": it["rarity"],
         "見た目": it["comment"],
-        "この靴下が印象に合う理由": c["review"]["reason"],
+        "この靴下が合う理由": c.get("review", {}).get("reason"),
     }
 
 
 def check() -> list[str]:
     """カタログの不備（50マスの欠け・印象名の不一致・画像の欠け）を返す。"""
     problems = []
+    from .analysis.rare import NOTES
     for it in _data()["items"]:
+        if is_rare(it):
+            if it["classification"]["special"] not in NOTES:
+                problems.append(f"{it['id']}: 未知の special {it['classification']['special']}")
+            if not (CATALOG_DIR / it["image"]).is_file():
+                problems.append(f"{it['id']}: 画像が無い {it['image']}")
+            continue
         f = it["classification"]["feature"]
         if f not in FEATURE_TO_IMPRESSION:
             problems.append(f"{it['id']}: 未知の印象 {f}")

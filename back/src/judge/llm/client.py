@@ -27,7 +27,8 @@ def get_client() -> AsyncAnthropic | None:
     if _client is None:
         _client = AsyncAnthropic(
             api_key=settings.anthropic_api_key,
-            base_url=settings.anthropic_base_url,
+            # 環境変数が空文字でも既定の接続先を使う（compose の env_file に空欄があっても動くように）
+            base_url=settings.anthropic_base_url or "https://api.anthropic.com",
             timeout=settings.llm_timeout_s,
             max_retries=1,
         )

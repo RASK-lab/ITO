@@ -19,7 +19,9 @@ def _load_dotenv() -> None:
             if not line or line.startswith("#") or "=" not in line:
                 continue
             key, value = line.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+            value = value.strip().strip('"').strip("'")
+            if value:  # 空欄の行は無視する（空文字の ANTHROPIC_BASE_URL を SDK が接続先として使ってしまうため）
+                os.environ.setdefault(key.strip(), value)
 
 
 _load_dotenv()
