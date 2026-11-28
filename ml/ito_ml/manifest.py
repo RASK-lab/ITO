@@ -4,6 +4,7 @@ ml/data/                       （Git に入れない。個人の書いた字や
   sources/<データ名>/          ダウンロードした元のデータ
   images/<データ名>/<id>.png   preprocess.normalize で整えた画像（256 × 256、白地に黒）
   manifests/<データ名>.jsonl   1 行に 1 枚。下の Item の形
+  duplicates.json              同じ画像の一覧（ito_ml/dedupe.py。load_items はここにある画像を除く）
   labels.sqlite3               ラベル付けの記録（labeling/server.py）
   export/<日時>/               学習に使う形に書き出したもの（tools/export_dataset.py）
 
@@ -24,6 +25,7 @@ DATA_DIR = ML_DIR / "data"
 SOURCES_DIR = DATA_DIR / "sources"
 IMAGES_DIR = DATA_DIR / "images"
 MANIFESTS_DIR = DATA_DIR / "manifests"
+DUPLICATES_PATH = DATA_DIR / "duplicates.json"
 
 _ID_SAFE = re.compile(r"[^a-z0-9_.-]+")
 
@@ -69,10 +71,13 @@ def write_manifest(source: str, items: list[Item]) -> Path:
     return path
 
 
-def load_items() -> list[dict]:
-    """すべてのデータの台帳を読む。"""
+def load_items(include_duplicates: bool = False) -> list[dict]:
+    """すべてのデータの台帳を読む。同じ画像（duplicates.json にあるもの）は、ふつうは除く。"""
     items = []
     for path in sorted(MANIFESTS_DIR.glob("*.jsonl")):
         with path.open(encoding="utf-8") as f:
             items += [json.loads(line) for line in f if line.strip()]
+    if not include_duplicates and DUPLICATES_PATH.exists():
+        removed = json.loads(DUPLICATES_PATH.read_text(encoding="utf-8"))
+        items = [i for i in items if i["id"] not in removed]
     return items

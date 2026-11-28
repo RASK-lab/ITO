@@ -10,7 +10,9 @@
 - 同じネットワーク（同じ Wi-Fi）の PC やスマホから、表示される http://<この PC の IP>:8765 で開ける。
   Windows で「アクセスを許可しますか」と出たら、プライベート ネットワークを許可する。
   合言葉はないので、会場や研究室の中だけで使うこと。
-- 画像は ml/data/manifests/*.jsonl のすべて（取り込みをやり直したら、次の画像を出すときに読み直す）。
+- 画像は ml/data/manifests/*.jsonl のすべて。ただし同じ画像（ml/data/duplicates.json）は除く
+  （取り込みをやり直したら、次の画像を出すときに読み直す）。
+- 1 枚に 1 人（config.json の target_ratings）。みんなで分けて付ける。画面に出ている画像はほかの人に出さない。
 - ラベルは ml/data/labels.sqlite3 に記録する（1 人 1 画像につき 1 行。付け直すと上書き）。
 - 画面は front/public/label/index.html、次の画像の選び方と集計は back/src/labeling_core.py（本番と共通）。
 """
@@ -33,7 +35,7 @@ ML = Path(__file__).resolve().parents[1]
 REPO = ML.parent
 sys.path.insert(0, str(ML))
 sys.path.insert(0, str(REPO / "back"))
-from ito_ml.manifest import DATA_DIR, MANIFESTS_DIR, load_items  # noqa: E402
+from ito_ml.manifest import DATA_DIR, DUPLICATES_PATH, MANIFESTS_DIR, load_items  # noqa: E402
 from src import labeling_core  # noqa: E402  （back/src/labeling_core.py。標準ライブラリだけ）
 
 CONFIG_PATH = ML / "labeling" / "config.json"
@@ -77,7 +79,8 @@ class Items:
         self.by_id: dict[str, dict] = {}
 
     def get(self) -> list[dict]:
-        stamp = tuple((p.name, p.stat().st_mtime) for p in sorted(MANIFESTS_DIR.glob("*.jsonl")))
+        paths = sorted(MANIFESTS_DIR.glob("*.jsonl")) + [p for p in [DUPLICATES_PATH] if p.exists()]
+        stamp = tuple((p.name, p.stat().st_mtime) for p in paths)
         if stamp != self._stamp:
             self.items = [{"id": i["id"], "source": i["source"], "group": i["group"], "image": "/img/" + i["image"]}
                           for i in load_items()]
@@ -101,6 +104,22 @@ def public(item: dict | None) -> dict | None:
     return None if item is None else {"id": item["id"], "image": item["image"]}
 
 
+def _active(now: float) -> dict[str, dict[str, float]]:
+    """期限の切れた「付け中」を消して、残りを返す（呼ぶときは _lock を取っておく）"""
+    for item_id in list(RESERVED):
+        by = {r: t for r, t in RESERVED[item_id].items() if now - t < RESERVE_S}
+        if by:
+            RESERVED[item_id] = by
+        else:
+            del RESERVED[item_id]
+    return RESERVED
+
+
+def _progress(items: list[dict], labels: dict, config: dict, now: float) -> dict:
+    active = {r for by in _active(now).values() for r in by}
+    return labeling_core.progress(items, labels, config) | {"active": len(active)}
+
+
 def api_next(q: dict) -> dict:
     config, rater = load_config(), q.get("rater", "").strip()
     if not rater:
@@ -109,14 +128,23 @@ def api_next(q: dict) -> dict:
     with _lock, connect() as connection:
         labels = labels_of(connection, config["label_set"])
         now = time.time()
-        reserved = {i: sum(1 for r, t in by.items() if r != rater and now - t < RESERVE_S)
-                    for i, by in RESERVED.items()}
+        for by in _active(now).values():
+            by.pop(rater, None)  # その人が前に出していた画像は、ほかの人に回す
+        reserved = {i: len(by) for i, by in RESERVED.items() if by}
         item, remaining = labeling_core.choose_next(
             items, labels, config, rater, set(filter(None, q.get("skip", "").split(","))), reserved)
         if item is not None:
             RESERVED.setdefault(item["id"], {})[rater] = now
+        progress = _progress(items, labels, config, now)
     done = sum(1 for v in labels.values() if rater in v)
-    return {"item": public(item), "done_by_me": done, "remaining_for_me": remaining}
+    return {"item": public(item), "done_by_me": done, "remaining_for_me": remaining, "progress": progress}
+
+
+def api_progress() -> dict:
+    config = load_config()
+    items = ITEMS.get()
+    with _lock, connect() as connection:
+        return _progress(items, labels_of(connection, config["label_set"]), config, time.time())
 
 
 def api_label(body: dict) -> dict:
@@ -180,6 +208,8 @@ class Handler(BaseHTTPRequestHandler):
                            | {"passcode_required": False})
             elif url.path == "/api/label/next":
                 self._json(api_next(q))
+            elif url.path == "/api/label/progress":
+                self._json(api_progress())
             elif url.path == "/api/label/mine":
                 self._json(api_mine(q))
             elif url.path == "/api/label/stats":

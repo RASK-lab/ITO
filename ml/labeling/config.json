@@ -36,8 +36,7 @@
     }
   ],
   "target_ratings": {
-    "default": 4,
-    "kuzushiji49": 2
+    "default": 1
   },
   "source_priority": {
     "collect": 1,

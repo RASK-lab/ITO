@@ -38,9 +38,11 @@ def test_label_flow_and_reload(client, monkeypatch):
     r = client.post("/api/label/labels", json={"rater": "さとう", "item_id": item_id, "label": "kawaii", "ms": 900},
                     headers=H)
     assert r.status_code == 200
-    # 同じ人には同じ画像を出さない。ほかの人には、付け始めた画像を先に出す
-    assert client.get("/api/label/next", params={"rater": "さとう"}, headers=H).json()["item"]["id"] != item_id
-    assert client.get("/api/label/next", params={"rater": "すずき"}, headers=H).json()["item"]["id"] == item_id
+    # 1 枚に 1 人なので、付いた画像はだれにも出さない。進み具合はみんなで共通
+    for rater in ("さとう", "すずき"):
+        data = client.get("/api/label/next", params={"rater": rater}, headers=H).json()
+        assert data["item"]["id"] != item_id
+        assert data["progress"]["done"] == 1 and data["progress"]["total"] == len(labeling.ITEMS)
     assert client.get("/api/label/mine", params={"rater": "さとう", "item_id": item_id},
                       headers=H).json()["label"] == "kawaii"
     # コンテナが眠って起きた（記録を置き場から読み直す）ときも残っている
@@ -57,3 +59,20 @@ def test_rejects_bad_input(client):
            {"rater": "a", "item_id": item_id, "label": "nope"}]
     for body in bad:
         assert client.post("/api/label/labels", json=body, headers=H).status_code == 422
+
+
+def test_items_are_shared_without_overlap(client):
+    # 同時に開いている人には、別々の画像を出す
+    ids = [client.get("/api/label/next", params={"rater": r}, headers=H).json()["item"]["id"] for r in "abcd"]
+    assert len(set(ids)) == 4
+    assert client.get("/api/label/progress", headers=H).json() == {"done": 0, "total": len(labeling.ITEMS), "active": 4}
+    # 次の画像をもらうと、前の画像はほかの人に回せるようになる（1 人が押さえるのは 1 枚だけ）
+    client.get("/api/label/next", params={"rater": "a", "skip": ids[0]}, headers=H)
+    reserved = [i for i, by in labeling.STORE.reserved.items() if "a" in by]
+    assert len(reserved) == 1 and reserved[0] != ids[0]
+
+
+def test_no_duplicate_items():
+    # 同じ画像は除いてある（ml/tools/build_label_site.py）
+    assert len({i["id"] for i in labeling.ITEMS}) == len(labeling.ITEMS)
+    assert labeling.CONFIG["target_ratings"]["default"] == 1

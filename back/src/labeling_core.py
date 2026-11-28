@@ -7,6 +7,9 @@
 - item: ラベルを付ける画像 1 枚。{"id", "source", "image", "group"}
 - labels: {item_id: {rater: label}}（同じ人が同じ画像に付け直したら上書き）
 - config: ラベルの種類や、1 枚に何人で付けるか（ml/labeling/config.json と同じ形）
+
+いまは 1 枚に 1 人（target_ratings が 1）。みんなで分けて付け、全部の画像に 1 回ずつ付ける。
+同じ画像を同時に 2 人に出さないよう、画面に出している画像（reserved）はほかの人に出さない。
 """
 
 from __future__ import annotations
@@ -57,6 +60,12 @@ def choose_next(items: list[dict], labels: dict[str, dict[str, str]], config: di
     return best, remaining
 
 
+def progress(items: list[dict], labels: dict[str, dict[str, str]], config: dict) -> dict:
+    """みんなで共通の進み具合。done: 目標の人数まで付いた画像の数"""
+    done = sum(1 for item in items if len(labels.get(item["id"], {})) >= target_of(config, item["source"]))
+    return {"done": done, "total": len(items)}
+
+
 def fleiss_kappa(table: list[dict[str, int]], categories: list[str]) -> float | None:
     """1 枚ごとの {ラベル: 人数} から Fleiss の κ（人数が画像ごとに違ってもよい形）。"""
     rows = [r for r in table if sum(r.values()) >= 2]
@@ -70,7 +79,7 @@ def fleiss_kappa(table: list[dict[str, int]], categories: list[str]) -> float | 
 
 
 def summarize(items: list[dict], labels: dict[str, dict[str, str]], config: dict) -> dict:
-    """進み具合と、人どうしの一致の度合い。"""
+    """進み具合と、人どうしの一致の度合い（1 枚に 1 人のときは、一致の度合いは出ない）。"""
     raters = sorted({r for v in labels.values() for r in v})
     per_rater = {r: sum(1 for v in labels.values() if r in v) for r in raters}
     per_label: dict[str, int] = {}
@@ -99,6 +108,6 @@ def summarize(items: list[dict], labels: dict[str, dict[str, str]], config: dict
             if label in categories:
                 counts[label] = counts.get(label, 0) + 1
         table.append(counts)
-    return {"label_set": config["label_set"], "ratings": sum(per_rater.values()), "per_rater": per_rater,
+    return {"label_set": config["label_set"], "progress": progress(items, labels, config), "ratings": sum(per_rater.values()), "per_rater": per_rater,
             "per_label": per_label, "per_source": per_source, "pairwise_agreement": pairs,
             "fleiss_kappa": fleiss_kappa(table, categories)}

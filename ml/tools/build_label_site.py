@@ -9,6 +9,7 @@
   back/src/resources/label_items.json           画像の一覧（id、データ名、画像のパス、group）
   back/src/resources/label_config.json          ml/labeling/config.json の写し ＋ 合言葉の SHA-256
 
+- はじめに同じ画像を調べ直し（ito_ml/dedupe.py）、同じ画像は 1 枚だけ入れる。
 - 公開してよいデータ（PUBLIC_SOURCES）だけを入れる。ETL（再配布の条件がある）と、
   アプリで集めた手書き（チームの外に出さない）は入れない。手元のサーバー
   （ml/labeling/server.py）でラベルを付ける。
@@ -30,6 +31,7 @@ from pathlib import Path
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from ito_ml.dedupe import update_duplicates  # noqa: E402
 from ito_ml.manifest import DATA_DIR, ML_DIR, load_items  # noqa: E402
 
 REPO = ML_DIR.parent
@@ -56,6 +58,8 @@ def main() -> None:
         return
     config.pop("raters", None)  # 本番では、付ける人が自分の名前を入れる
 
+    removed = update_duplicates()
+    print(f"同じ画像 {len(removed)} 枚を除く")
     if SITE_IMG.exists():
         shutil.rmtree(SITE_IMG)
     items = []

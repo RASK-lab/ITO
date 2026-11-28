@@ -74,3 +74,18 @@ def test_fleiss_kappa():
     cats = ["a", "b"]
     assert labeling_core.fleiss_kappa([{"a": 4}, {"b": 4}, {"a": 4}], cats) == 1.0
     assert labeling_core.fleiss_kappa([{"a": 1}], cats) is None
+
+
+def test_find_duplicates(tmp_path, monkeypatch):
+    from ito_ml import dedupe
+
+    monkeypatch.setattr(dedupe, "DATA_DIR", tmp_path)
+    shapes = {"a": (20, 30, 60, 90), "a2": (20, 30, 60, 90), "b": (10, 10, 90, 40)}
+    items = []
+    for name, box in shapes.items():
+        image = Image.new("L", (100, 100), 255)
+        ImageDraw.Draw(image).rectangle(box, fill=0)
+        image.save(tmp_path / f"{name}.png")
+        items.append({"id": name, "group": f"g:{name}", "image": f"{name}.png"})
+    # 名前の短い group（元のほう）を残す
+    assert dedupe.find_duplicates(items) == {"a2": "a"}

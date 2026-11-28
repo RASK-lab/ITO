@@ -30,6 +30,13 @@
   details { font-size: 0.85rem; color: #444; }
   kbd { border: 1px solid #aaa; border-radius: 3px; padding: 0 4px; font-size: 0.8em; }
   pre { white-space: pre-wrap; font-size: 0.8rem; background: #fff; padding: 8px; border: 1px solid #ccc; }
+  .progress { display: flex; flex-direction: column; gap: 4px; }
+  .bar { height: 12px; background: #ddd; border-radius: 6px; overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 0; background: #2a7a4b; transition: width 0.3s; }
+  .progress p { margin: 0; font-size: 0.85rem; color: #444; text-align: center; }
+  .stats { font-size: 0.85rem; background: #fff; padding: 8px 12px; border: 1px solid #ccc; }
+  .stats table { border-collapse: collapse; }
+  .stats td { padding: 0 12px 0 0; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -39,6 +46,7 @@
   <section class="start" id="start" hidden>
     <h1>「と」のラベル付け</h1>
     <p>AI の学習のために、画像の「と」を見て、印象にいちばん近いものを選んでください。考えこまず、2〜3 秒で直感で選びます。どこのデータかは表示しません。</p>
+    <p>みんなで分けて付けます。1 枚につき 1 人だけが付けるので、同じ画像はほかの人には出ません。何人で同時に付けてもかまいません。</p>
     <label for="rater">あなたの名前（ほかの人と区別できれば、ニックネームでよい）</label>
     <input id="rater" maxlength="20" autocomplete="nickname">
     <label for="passcode" id="passcodeLabel">合言葉</label>
@@ -53,6 +61,11 @@
       <span id="count"></span>
       <span><button id="change">名前を変える</button> ・ <button id="showStats">集計</button></span>
     </header>
+    <!-- みんなで共通の進み具合 -->
+    <div class="progress">
+      <div class="bar" role="progressbar" aria-label="みんなの進み具合" aria-valuemin="0" id="barBox"><span id="bar"></span></div>
+      <p id="progressText"></p>
+    </div>
     <h1 id="question"></h1>
     <div class="frame"><img id="img" alt="ラベルを付ける「と」"></div>
     <div class="buttons" id="classes"></div>
@@ -68,7 +81,8 @@
       <ul id="hints"></ul>
       <p>キー: 数字キーで選ぶ、<kbd>Backspace</kbd> で 1 つ戻る。付け直すと上書きされます。</p>
     </details>
-    <pre id="stats" hidden></pre>
+    <div class="stats" id="stats" hidden></div>
+    <button id="retry" hidden>もう一度さがす</button>
   </section>
   <footer class="status">
     画像: Google Fonts の日本語フォント（OFL など）、
@@ -102,12 +116,36 @@ async function api(path, body) {
 
 function allChoices() { return [...config.classes, ...config.special]; }
 
+let progress = null;
+
+function showProgress(p) {
+  if (!p) return;
+  progress = p;
+  const pct = p.total ? (100 * p.done) / p.total : 0;
+  $("bar").style.width = `${pct}%`;
+  $("barBox").setAttribute("aria-valuemax", p.total);
+  $("barBox").setAttribute("aria-valuenow", p.done);
+  const fmt = (n) => n.toLocaleString("ja-JP");
+  $("progressText").textContent =
+    `みんなで ${fmt(p.done)} / ${fmt(p.total)} 枚（${pct.toFixed(1)}%）` + (p.active ? ` ・ いま ${p.active} 人が付けています` : "");
+}
+
+async function refreshProgress() {
+  try { showProgress(await api("/progress")); } catch { /* 進み具合が出なくても続ける */ }
+}
+
 function render(item, chosen) {
   current = item;
+  $("retry").hidden = true;
   document.querySelectorAll("[data-key]").forEach((b) => b.classList.toggle("chosen", b.dataset.key === chosen));
   if (!item) {
     $("img").removeAttribute("src");
-    $("status").textContent = "あなたの分は、すべて付け終わりました。ありがとうございました。";
+    if (progress && progress.done >= progress.total) {
+      $("status").textContent = "全部の画像に付け終わりました。ありがとうございました。";
+    } else {
+      $("status").textContent = "残りの画像は、いまほかの人が付けています。少し待ってから、もう一度さがしてください。";
+      $("retry").hidden = false;
+    }
     return;
   }
   $("img").src = item.image;
@@ -118,9 +156,24 @@ async function loadNext() {
   revisiting = false;
   const skip = current ? current.id : "";
   const data = await api(`/next?rater=${encodeURIComponent(rater)}&skip=${encodeURIComponent(skip)}`);
-  $("count").textContent = `付けた数 ${data.done_by_me} ・ 残り ${data.remaining_for_me}`;
-  render(data.item, null);
+  $("count").textContent = `あなたが付けた数 ${data.done_by_me}`;
+  showProgress(data.progress);
   $("status").textContent = "";
+  render(data.item, null);
+}
+
+function showStats(data) {
+  const rows = (obj) => Object.entries(obj).map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${v}</td></tr>`).join("");
+  const sources = Object.fromEntries(Object.entries(data.per_source).map(([k, v]) => [k, `${v.complete} / ${v.items}`]));
+  const labels = Object.fromEntries(allChoices().map((c) => [c.label, data.per_label[c.key] || 0]));
+  $("stats").innerHTML =
+    `<p>付けた人ごとの数</p><table>${rows(data.per_rater)}</table>` +
+    `<p>データごとの進み具合</p><table>${rows(sources)}</table>` +
+    `<p>ラベルごとの数</p><table>${rows(labels)}</table>`;
+}
+
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 }
 
 async function choose(key) {
@@ -212,8 +265,17 @@ $("back").onclick = back;
 $("showStats").onclick = async () => {
   const el = $("stats");
   el.hidden = !el.hidden;
-  if (!el.hidden) el.textContent = JSON.stringify(await api("/stats"), null, 2);
+  if (!el.hidden) {
+    const data = await api("/stats");
+    showProgress(data.progress && { ...data.progress, active: progress ? progress.active : 0 });
+    showStats(data);
+  }
 };
+$("retry").onclick = () => { current = null; loadNext().catch((e) => { $("status").textContent = `読み込めませんでした（${e.message}）`; }); };
+// ほかのタブから戻ってきたら、みんなの進み具合を読み直す（開いているだけのときは問い合わせない）
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && !$("work").hidden) refreshProgress();
+});
 document.addEventListener("keydown", (e) => {
   if ($("work").hidden) return;
   const n = Number(e.key);

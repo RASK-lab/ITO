@@ -20,7 +20,7 @@ ITO にある API を、1 枚で見渡すための一覧です。送る内容と
 | GET | `/api/label/config` | 学習データのラベル付けの設定（印象の種類） | ラベル付けの画面（`front/public/label/index.html`、アドレスは `/label/`） | `back/src/labeling.py` | 動く |
 | GET | `/api/label/next` | 次にラベルを付ける画像（合言葉が要る。以下同じ） | 同上 | 同上 | 動く |
 | POST | `/api/label/labels` | ラベルを 1 つ記録する（R2 に置く） | 同上 | 同上 | 動く |
-| GET | `/api/label/mine`、`/api/label/stats`、`/api/label/export` | 自分が付けたラベル、集計、すべてのラベルの書き出し | 同上、`ml/tools/export_dataset.py` | 同上 | 動く |
+| GET | `/api/label/progress`、`/api/label/mine`、`/api/label/stats`、`/api/label/export` | みんなで共通の進み具合、自分が付けたラベル、集計、すべてのラベルの書き出し | 同上、`ml/tools/export_dataset.py` | 同上 | 動く |
 
 くわしい形: ラベル付けは [ml/README.md](../ml/README.md)、[api.md の POST /api/drawings](api.md#post-apidrawings)、[api.md の「シェア」](api.md#シェア結果ごとのカード)
 

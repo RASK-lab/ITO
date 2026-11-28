@@ -1,6 +1,8 @@
 """ラベル付けの API（/api/label/*）。画面は front/public/label/index.html（アドレスは /label/）。
 
 学習データ（ml/README.md）の画像に、集まった人が印象のラベルを付ける。
+1 枚に 1 人（label_config.json の target_ratings）。みんなで分けて、全部の画像に 1 回ずつ付ける。
+いまだれかの画面に出ている画像（RESERVE_S 秒まで）は、ほかの人に出さない。
 
 - 画像の一覧: back/src/resources/label_items.json（ml/tools/build_label_site.py が作る）。
   画像そのものは front/public/label/img/ にあり、フロントと一緒に静的なファイルとして配る。
@@ -19,7 +21,8 @@
 | メソッド | パス | 内容 |
 |---|---|---|
 | GET | /api/label/config | ラベルの種類（合言葉は不要） |
-| GET | /api/label/next?rater=名前&skip=id | その人がまだ付けていない次の画像 |
+| GET | /api/label/next?rater=名前&skip=id | 次に付ける画像（まだだれも付けておらず、ほかの人の画面にも出ていないもの）と、進み具合 |
+| GET | /api/label/progress | みんなで共通の進み具合 {"done", "total", "active"（いま付けている人数）} |
 | POST | /api/label/labels | {"rater", "item_id", "label", "ms"} を記録（同じ人・同じ画像は上書き） |
 | GET | /api/label/mine?rater=名前&item_id=id | その人がその画像に付けたラベル（「1 つ戻る」用） |
 | GET | /api/label/stats | 進み具合と、人どうしの一致の度合い |
@@ -159,6 +162,23 @@ def get_config() -> dict:
         "passcode_required": bool(os.environ.get("LABEL_PASSCODE") or CONFIG.get("passcode_sha256"))}
 
 
+def _active_reservations(store: _Store, now: float) -> dict[str, dict[str, float]]:
+    """期限の切れた「付け中」を消して、残りを返す（呼ぶときは store.lock を取っておく）"""
+    for item_id in list(store.reserved):
+        by = {r: t for r, t in store.reserved[item_id].items() if now - t < RESERVE_S}
+        if by:
+            store.reserved[item_id] = by
+        else:
+            del store.reserved[item_id]
+    return store.reserved
+
+
+def _progress(store: _Store, now: float) -> dict:
+    """みんなで共通の進み具合と、いま付けている人の数（呼ぶときは store.lock を取っておく）"""
+    active = {r for by in _active_reservations(store, now).values() for r in by}
+    return labeling_core.progress(ITEMS, store.labels(), CONFIG) | {"active": len(active)}
+
+
 @router.get("/next")
 def get_next(rater: str, skip: str = "", x_label_passcode: str | None = Header(None)) -> dict:
     _check_passcode(x_label_passcode)
@@ -166,17 +186,26 @@ def get_next(rater: str, skip: str = "", x_label_passcode: str | None = Header(N
     store = _loaded_store()
     with store.lock:
         now = time.time()
-        reserved = {}
-        for item_id, by in store.reserved.items():
-            n = sum(1 for r, t in by.items() if r != rater and now - t < RESERVE_S)
-            if n:
-                reserved[item_id] = n
+        reservations = _active_reservations(store, now)
+        # その人が前に出していた画像は、ほかの人に回せるようにする（1 人が出すのは 1 枚だけ）
+        for by in reservations.values():
+            by.pop(rater, None)
+        reserved = {item_id: len(by) for item_id, by in reservations.items() if by}
         item, remaining = labeling_core.choose_next(
             ITEMS, store.labels(), CONFIG, rater, set(filter(None, skip.split(","))), reserved)
         if item is not None:
-            store.reserved.setdefault(item["id"], {})[rater] = now
+            reservations.setdefault(item["id"], {})[rater] = now
         done = len(store.by_rater.get(rater, {}))
-    return {"item": _public_item(item), "done_by_me": done, "remaining_for_me": remaining}
+        progress = _progress(store, now)
+    return {"item": _public_item(item), "done_by_me": done, "remaining_for_me": remaining, "progress": progress}
+
+
+@router.get("/progress")
+def get_progress(x_label_passcode: str | None = Header(None)) -> dict:
+    _check_passcode(x_label_passcode)
+    store = _loaded_store()
+    with store.lock:
+        return _progress(store, time.time())
 
 
 class LabelIn(BaseModel):
