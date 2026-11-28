@@ -1,0 +1,7 @@
+# データ作り・ラベル付けに要るもの（ラベル付けのサーバーは標準ライブラリだけで動く）
+numpy
+pillow
+# テスト
+pytest
+# 学習（ito_ml/dataset.py を使うとき）
+# torch

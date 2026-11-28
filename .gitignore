@@ -46,3 +46,6 @@ docs/local/
 CLAUDE.md
 AGENTS.md
 .agents/
+
+# ===== 学習データ（ml/README.md。再配布できないデータと、個人の書いた字を含む） =====
+ml/data/
