@@ -14,6 +14,25 @@ const COLLECTION_HASH = "#collection";
  */
 const COLLECT_HASH = "#collect";
 
+/** 学習データ集めの画面を開いたタブの目印（タブを閉じるまで残る） */
+const COLLECT_ONLY_KEY = "ito.collectOnly";
+
+function isCollectOnly(): boolean {
+  try {
+    return sessionStorage.getItem(COLLECT_ONLY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markCollectOnly(): void {
+  try {
+    sessionStorage.setItem(COLLECT_ONLY_KEY, "1");
+  } catch {
+    // 覚えられないとき（プライベートウィンドウなど）は、アドレスが #collect の間だけ収集の画面になる
+  }
+}
+
 type Screen = "start" | "write" | "collection" | "collect";
 
 /**
@@ -22,14 +41,20 @@ type Screen = "start" | "write" | "collection" | "collect";
  * それ以外のアドレスは、最初の画面のアドレス（# なし）に直す。
  */
 function screenFromAddress(): Screen {
+  // 学習データ集めの画面を開いたタブでは、アドレスを書き換えても、戻っても、
+  // アプリ本体の画面には移らない（集めるための人に、本体を見せないため）。
+  if (window.location.hash === COLLECT_HASH || isCollectOnly()) {
+    markCollectOnly();
+    if (window.location.hash !== COLLECT_HASH) {
+      window.history.replaceState(null, "", COLLECT_HASH);
+    }
+    return "collect";
+  }
   if (window.location.hash === WRITE_HASH && loadUserName() !== null) {
     return "write";
   }
   if (window.location.hash === COLLECTION_HASH) {
     return "collection";
-  }
-  if (window.location.hash === COLLECT_HASH) {
-    return "collect";
   }
   if (window.location.hash !== "") {
     window.history.replaceState(

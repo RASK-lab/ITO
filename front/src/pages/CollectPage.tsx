@@ -1,14 +1,11 @@
-import { useRef, useState } from "react";
-import type { FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MAX_COLLECT_POINTS,
   ProtocolChangedError,
   fetchPlan,
   guessPointerType,
-  loadProfile,
   loadWriterId,
   randomId,
-  saveProfile,
   saveSample,
 } from "../api/collect";
 import type { CollectPlan, CollectProfile } from "../api/collect";
@@ -19,162 +16,138 @@ import type { WritingCanvasHandle } from "../components/WritingCanvas";
  * 学習データ集めの画面（アドレスは #collect）。アプリ本体の画面からはつながず、
  * このアドレスを配って開いてもらう。集め方は docs/collect.md。
  *
- * 流れ: 説明と同意・2 つの質問 → 「と」を 6 回書く（1 回ごとに送る）→ お礼
- * 途中でやめても、それまでに送った分は残る。
+ * 開くと、すぐにお題と書く枠が出る。「確定」で 1 個送り、次のお題に進む。
+ * お題は 5 個で 1 組。5 個書き終えたら、お礼の画面を出す。「もう一回」で次の 5 個を書ける。
+ * 説明と質問の画面、アプリ本体へ進むボタンは置かない。
  */
 
-type Step =
-  | { kind: "intro" }
-  | { kind: "write"; plan: CollectPlan; index: number; sessionId: string }
-  | { kind: "done"; sent: number };
+/** いま書いている 1 組（お題 5 個）と、その中の何個目か */
+type Round = { plan: CollectPlan; index: number; sessionId: string };
 
-const EMPTY_PROFILE: CollectProfile = {
+/**
+ * 書いた人の申告。質問の画面をなくしたので、利き手と習字の経験は「答えない」で送る。
+ * 学習に使うことは、書く画面に書いて知らせている（下の collect-notice）。
+ */
+const PROFILE: CollectProfile = {
   dominantHand: "unknown",
   calligraphy: "unknown",
-  consentTrain: false,
+  consentTrain: true,
 };
 
+async function loadRound(): Promise<Round> {
+  const plan = await fetchPlan(guessPointerType());
+  return { plan, index: 0, sessionId: randomId() };
+}
+
+/**
+ * サーバーが持つお題の文（例: 「雑に（急いで、なぐり書きで）」）を、
+ * 大きく出す指示と、かっこの中の補足に分ける。
+ */
+function splitInstruction(instruction: string) {
+  const match = /^(.+?)（(.+)）$/.exec(instruction);
+  return match
+    ? { text: match[1], hint: match[2] }
+    : { text: instruction, hint: "" };
+}
+
 export function CollectPage() {
-  const [step, setStep] = useState<Step>({ kind: "intro" });
-  const [profile, setProfile] = useState<CollectProfile>(
-    () => loadProfile() ?? EMPTY_PROFILE,
-  );
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  /** この回で送れた数（お礼の画面に出す） */
-  const sentRef = useRef(0);
+  const [round, setRound] = useState<Round | null>(null);
+  /** お題を取れなかったとき true */
+  const [failed, setFailed] = useState(false);
+  /** この画面を開いてから送れた数 */
+  const [sent, setSent] = useState(0);
+  /** いまの 1 組で送れた数（飛ばした分は入らない） */
+  const [roundSent, setRoundSent] = useState(0);
+  /** 1 組を書き終えて、お礼の画面を出しているとき true */
+  const [done, setDone] = useState(false);
 
-  async function start() {
-    setBusy(true);
-    setMessage("");
-    try {
-      const plan = await fetchPlan(guessPointerType());
-      sentRef.current = 0;
-      setStep({ kind: "write", plan, index: 0, sessionId: randomId() });
-    } catch (error) {
-      console.error(error);
-      setMessage("始められませんでした。通信を確かめて、もう一度押してください。");
-    }
-    setBusy(false);
+  function start() {
+    loadRound()
+      .then(setRound)
+      .catch((error) => {
+        console.error(error);
+        setFailed(true);
+      });
   }
 
-  function handleIntroSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (!profile.consentTrain) return;
-    saveProfile(profile);
-    void start();
-  }
+  // 開いたら、すぐに最初のお題を取る
+  useEffect(start, []);
 
-  /** 次の指示へ。最後ならお礼の画面へ。 */
+  /** 次のお題へ。5 個目のあとは、お礼の画面へ。 */
   function next() {
-    if (step.kind !== "write") return;
-    if (step.index + 1 < step.plan.trials.length) {
-      setStep({ ...step, index: step.index + 1 });
+    if (!round) return;
+    if (round.index + 1 < round.plan.trials.length) {
+      setRound({ ...round, index: round.index + 1 });
     } else {
-      setStep({ kind: "done", sent: sentRef.current });
+      setDone(true);
     }
   }
 
-  if (step.kind === "intro") {
+  /** お礼の画面の「もう一回」。次の 5 個を取りに行く。 */
+  function again() {
+    setDone(false);
+    setRoundSent(0);
+    setRound(null);
+    start();
+  }
+
+  if (done) {
     return (
-      <main className="collect">
-        <h1>「と」を集めています</h1>
+      <main className="collect collect-done">
+        <div className="collect-seal" aria-hidden="true">
+          と
+        </div>
+        <h1>ありがとうございました</h1>
         <p>
-          AI の学習のために、ひらがなの「と」を 6 回書いてください（2〜3 分）。
-          1 回ごとに「可愛く」「かっこよく」などの指示が出るので、それに合わせて書きます。
+          {roundSent > 0
+            ? `${roundSent} 個の「と」を受け取りました。`
+            : "またいつでも書きに来てください。"}
         </p>
-        <p className="collect-note">
-          記録するのは、書いた線（位置と時間、筆圧）、画像、書く枠の大きさ、下の 2
-          つの答えだけです。名前などは聞きません。同じ端末で書いた「と」は、無作為な番号でまとめます。
-        </p>
-        <form onSubmit={handleIntroSubmit}>
-          <label>
-            利き手
-            <select
-              value={profile.dominantHand}
-              onChange={(e) =>
-                setProfile({
-                  ...profile,
-                  dominantHand: e.target.value as CollectProfile["dominantHand"],
-                })
-              }
-            >
-              <option value="unknown">答えない</option>
-              <option value="right">右</option>
-              <option value="left">左</option>
-              <option value="both">両方</option>
-            </select>
-          </label>
-          <label>
-            習字・書道の経験
-            <select
-              value={profile.calligraphy}
-              onChange={(e) =>
-                setProfile({
-                  ...profile,
-                  calligraphy: e.target.value as CollectProfile["calligraphy"],
-                })
-              }
-            >
-              <option value="unknown">答えない</option>
-              <option value="school">学校の授業だけ</option>
-              <option value="lessons">習っていた</option>
-              <option value="advanced">段・師範など</option>
-            </select>
-          </label>
-          <label className="collect-check">
-            <input
-              type="checkbox"
-              checked={profile.consentTrain}
-              onChange={(e) =>
-                setProfile({ ...profile, consentTrain: e.target.checked })
-              }
-            />
-            書いた「と」を、AI の学習に使うことに同意します（必須）
-          </label>
-          <button type="submit" disabled={!profile.consentTrain || busy}>
-            始める
+        <div className="actions">
+          <button type="button" className="primary" onClick={again}>
+            もう一回
           </button>
-        </form>
-        <p className="message" role="status">
-          {message}
-        </p>
+        </div>
       </main>
     );
   }
 
-  if (step.kind === "done") {
+  if (!round) {
     return (
       <main className="collect">
-        <h1>ありがとうございました</h1>
-        <p>{step.sent} 個の「と」を受け取りました。</p>
-        <div className="actions">
-          <button type="button" onClick={() => void start()} disabled={busy}>
-            もう 1 回書く
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              window.location.hash = "";
-            }}
-          >
-            アプリへ
-          </button>
+        <div className="collect-prompt">
+          <p className="collect-lead">「と」を書いてください</p>
+          <h1>{failed ? "始められませんでした" : "お題を用意しています"}</h1>
+          <p className="collect-hint">
+            {failed ? "通信を確かめて、下のボタンを押してください。" : ""}
+          </p>
         </div>
-        <p className="message" role="status">
-          {message}
-        </p>
+        {failed && (
+          <div className="actions">
+            <button
+              type="button"
+              className="primary"
+              onClick={() => {
+                setFailed(false);
+                start();
+              }}
+            >
+              もう一度
+            </button>
+          </div>
+        )}
       </main>
     );
   }
 
   return (
     <CollectTrialView
-      key={`${step.sessionId}-${step.index}`}
-      step={step}
-      profile={profile}
+      key={`${round.sessionId}-${round.index}`}
+      round={round}
+      sent={sent}
       onSent={() => {
-        sentRef.current += 1;
+        setSent((count) => count + 1);
+        setRoundSent((count) => count + 1);
         next();
       }}
       onSkip={next}
@@ -183,14 +156,14 @@ export function CollectPage() {
 }
 
 type TrialProps = {
-  step: Extract<Step, { kind: "write" }>;
-  profile: CollectProfile;
+  round: Round;
+  sent: number;
   onSent: () => void;
   onSkip: () => void;
 };
 
-/** 1 回分の書く画面。回ごとに作り直す（key）ので、枠と数えた値は毎回空から始まる。 */
-function CollectTrialView({ step, profile, onSent, onSkip }: TrialProps) {
+/** 1 個分の書く画面。お題ごとに作り直す（key）ので、枠と数えた値は毎回空から始まる。 */
+function CollectTrialView({ round, sent, onSent, onSkip }: TrialProps) {
   const canvasRef = useRef<WritingCanvasHandle>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [strokeCount, setStrokeCount] = useState(0);
@@ -199,11 +172,14 @@ function CollectTrialView({ step, profile, onSent, onSkip }: TrialProps) {
   /** 「消去」と「1つ戻る」を押した回数（書き直しの多さとして記録する） */
   const redoRef = useRef(0);
 
-  const trial = step.plan.trials[step.index];
-  const total = step.plan.trials.length;
+  const trial = round.plan.trials[round.index];
+  const total = round.plan.trials.length;
   const empty = strokeCount === 0;
+  const { text, hint } = splitInstruction(trial.instruction);
 
-  async function handleNext() {
+  const status = sent === 0 ? "" : `これまでに ${sent} 個 書きました`;
+
+  async function handleConfirm() {
     const drawing = canvasRef.current?.exportDrawing();
     if (!drawing) return;
     const points = drawing.strokes.reduce((n, s) => n + s.points.length, 0);
@@ -218,9 +194,9 @@ function CollectTrialView({ step, profile, onSent, onSkip }: TrialProps) {
     setSending(true);
     setMessage("");
     try {
-      await saveSample(step.plan, trial, drawing, profile, {
+      await saveSample(round.plan, trial, drawing, PROFILE, {
         writerId: loadWriterId(),
-        sessionId: step.sessionId,
+        sessionId: round.sessionId,
         displayPx: Math.max(50, displayPx),
         redoCount: redoRef.current,
       });
@@ -230,7 +206,7 @@ function CollectTrialView({ step, profile, onSent, onSkip }: TrialProps) {
       setMessage(
         error instanceof ProtocolChangedError
           ? "集め方が更新されました。ページを読み込み直してください。"
-          : "送れませんでした。もう一度「次へ」を押してください。",
+          : "送れませんでした。もう一度「確定」を押してください。",
       );
       setSending(false);
     }
@@ -238,14 +214,15 @@ function CollectTrialView({ step, profile, onSent, onSkip }: TrialProps) {
 
   return (
     <main className="collect">
-      <p className="collect-progress">
-        {step.index + 1} / {total}
-      </p>
-      <h1 className="collect-instruction">
-        <strong>{trial.instruction}</strong>「と」を書いてください
-      </h1>
+      <div className="collect-prompt">
+        <p className="collect-lead">
+          「と」を書いてください（{round.index + 1} / {total}）
+        </p>
+        <h1>{text}</h1>
+        <p className="collect-hint">{hint}</p>
+      </div>
 
-      <div ref={wrapRef}>
+      <div className="collect-sheet" ref={wrapRef}>
         <WritingCanvas
           ref={canvasRef}
           disabled={sending}
@@ -277,17 +254,31 @@ function CollectTrialView({ step, profile, onSent, onSkip }: TrialProps) {
         >
           1つ戻る
         </button>
-        {/* 書きにくい指示（利き手と反対の手など）は飛ばせる。飛ばした回は記録しない。 */}
-        <button type="button" onClick={onSkip} disabled={sending}>
-          飛ばす
-        </button>
-        <button type="button" onClick={handleNext} disabled={empty || sending}>
-          次へ
+        <button
+          type="button"
+          className="primary"
+          onClick={handleConfirm}
+          disabled={empty || sending}
+        >
+          確定
         </button>
       </div>
 
-      <p className="message" role="status">
-        {message}
+      <p className="collect-status" role="status">
+        {message || status}
+      </p>
+
+      <p className="collect-notice">
+        書いていただいた「と」は、AI が字の印象を学ぶためのお手本になります。
+        {/* 書きにくいお題（利き手と反対の手など）は飛ばせる。飛ばした分は記録しない。 */}
+        <button
+          type="button"
+          className="collect-skip"
+          onClick={onSkip}
+          disabled={sending}
+        >
+          このお題を飛ばす
+        </button>
       </p>
     </main>
   );

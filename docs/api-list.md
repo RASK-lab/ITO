@@ -17,7 +17,7 @@ ITO にある API を、1 枚で見渡すための一覧です。送る内容と
 | PUT | `/api/drawings/{id}/card` | 結果 1 件ぶんの、X のカード用の画像（1200 × 630 の JPEG）を預かり、シェア用のページのパスを返す | シェアの画面を開いたとき（`front/src/api/share.ts`） | `back/src/share.py` | 動く（手元で確認。本番では未確認） |
 | GET | `/api/cards/{id}.jpg` | 預かったカードの画像を返す | X などのロボット（シェア用のページに書いた `og:image`） | `back/src/share.py` | 同上 |
 | GET | `/api/share/{id}` | 結果 1 件ぶんの、シェア用のページ（HTML）。カードの指定（OGP）が書いてある。人が開くと最初の画面に移る | X に投稿されたアドレス。X などのロボットと、投稿を見た人 | `back/src/share.py` | 同上 |
-| GET | `/api/collect/plan` | 学習データ集めの 1 回分（6 個）の、書いてもらう順番と指示を返す | 学習データ集めの画面（`front/src/api/collect.ts`） | `back/src/collect.py` | 動く（手元） |
+| GET | `/api/collect/plan` | 学習データ集めの 1 回分（5 個）の、書いてもらう順番と指示を返す | 学習データ集めの画面（`front/src/api/collect.ts`） | `back/src/collect.py` | 動く（手元） |
 | POST | `/api/collect/samples` | 学習データの「と」を 1 つ記録する（指示、利き手などの申告、線のデータ、画像） | 同上 | `back/src/collect.py` | 動く（手元）。本番は Worker と D1 の変更待ち |
 
 くわしい形: [api.md の POST /api/drawings](api.md#post-apidrawings)、[api.md の「シェア」](api.md#シェア結果ごとのカード)、学習データ集めは [collect.md](collect.md)（送る内容は `back/src/collect.py` の `CollectSampleIn`）

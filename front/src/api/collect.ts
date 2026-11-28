@@ -19,7 +19,7 @@ export type CollectPlan = {
   trials: CollectTrial[];
 };
 
-/** 書いた人の申告。最初の画面で一度だけ聞き、ブラウザに覚えておく。 */
+/** 書いた人の申告。いまの画面では聞かず、決まった値で送る（CollectPage.tsx の PROFILE）。 */
 export type CollectProfile = {
   dominantHand: "right" | "left" | "both" | "unknown";
   calligraphy: "school" | "lessons" | "advanced" | "unknown";
@@ -105,7 +105,6 @@ export function randomId(): string {
 }
 
 const WRITER_KEY = "ito.collect.writerId";
-const PROFILE_KEY = "ito.collect.profile";
 
 /**
  * 書いた人の匿名の ID。ブラウザに覚えさせ、同じ人が何回書いても同じ ID にする
@@ -121,22 +120,5 @@ export function loadWriterId(): string {
   } catch {
     // 覚えられないとき（プライベートウィンドウなど）は、毎回新しい ID になる
     return randomId();
-  }
-}
-
-export function loadProfile(): CollectProfile | null {
-  try {
-    const stored = localStorage.getItem(PROFILE_KEY);
-    return stored ? (JSON.parse(stored) as CollectProfile) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveProfile(profile: CollectProfile): void {
-  try {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-  } catch {
-    // 覚えられなくても続けられる（次回また聞くだけ）
   }
 }
