@@ -59,10 +59,7 @@ function App() {
   }
 
   if (screen === "start") return (
-    <StartPage
-      onStart={handleStart}
-      onCollection={() => { window.location.hash = COLLECTION_HASH; }}
-    />
+    <StartPage onStart={handleStart} />
   );
 
   if (screen === "collection") return (
@@ -79,7 +76,7 @@ function App() {
       >
         戻る
       </button>
-      <WritePage />
+      <WritePage onCollection={() => { window.location.hash = COLLECTION_HASH; }} />
     </>
   );
 }

@@ -27,7 +27,11 @@ function wait(ms: number) {
  * 「と」を書く画面。「確定」のあとの待機中の画面と結果の画面も、この中で切り替える
  * （アドレスは変えない）。
  */
-export function WritePage() {
+type Props = {
+  onCollection: () => void;
+};
+
+export function WritePage({ onCollection }: Props) {
   const canvasRef = useRef<WritingCanvasHandle>(null);
   const [strokeCount, setStrokeCount] = useState(0);
   const [full, setFull] = useState(false);
@@ -116,6 +120,10 @@ export function WritePage() {
         <p className="message" role="status">
           {message || (full ? FULL_MESSAGE : "")}
         </p>
+
+        <button type="button" onClick={onCollection} className="collection-link">
+          靴下図鑑を見る
+        </button>
       </main>
 
       {result !== null ? (

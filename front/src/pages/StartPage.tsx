@@ -5,17 +5,11 @@ import {
   MAX_USER_NAME_LENGTH,
   loadUserName,
 } from "../userName";
-
 type Props = {
-  /** 「手紙を書く」が押されたとき。name は入力されたまま（空のこともある）。 */
   onStart: (name: string) => void;
-  /** 「靴下図鑑」が押されたとき。 */
-  onCollection: () => void;
 };
 
-/** 最初の画面。ユーザーネームを入れて、書く画面へ進む。 */
-export function StartPage({ onStart, onCollection }: Props) {
-  // 前に入れた名前があれば、入った状態で始める
+export function StartPage({ onStart }: Props) {
   const [name, setName] = useState(() => loadUserName() ?? "");
 
   function handleSubmit(event: FormEvent) {
@@ -24,25 +18,39 @@ export function StartPage({ onStart, onCollection }: Props) {
   }
 
   return (
-    <main className="start">
-      <h1>ITO〜良い「と」〜</h1>
-      <p>手紙を書くと靴下が届きます</p>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="user-name">ユーザーネームを入れてください</label>
-        <input
-          id="user-name"
-          type="text"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder={DEFAULT_USER_NAME}
-          maxLength={MAX_USER_NAME_LENGTH}
-          autoComplete="off"
-        />
-        <button type="submit">手紙を書く</button>
-      </form>
-      <button type="button" onClick={onCollection} className="collection-link">
-        靴下図鑑を見る
-      </button>
-    </main>
+    <div className="start-scene">
+      {/* 机の背景画像 */}
+      <img src="/desk-bg.png" alt="" aria-hidden="true" className="start-bg" />
+
+      {/* 中央のコンテンツ（手紙 + ボタン） */}
+      <div className="start-center">
+        <div className="start-letter">
+          <p className="start-letter__catch">一筆にあなたが宿る</p>
+          <p className="start-letter__catch">いい「と」を刻もう。</p>
+          <div className="start-letter__divider" />
+          <p className="start-ito-logo">ITO</p>
+
+          <form className="start-form" onSubmit={handleSubmit}>
+            <label htmlFor="user-name" className="start-form__label">
+              ユーザーネーム
+            </label>
+            <input
+              id="user-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={DEFAULT_USER_NAME}
+              maxLength={MAX_USER_NAME_LENGTH}
+              autoComplete="off"
+              className="start-form__input"
+            />
+            <button type="submit" className="start-form__btn">
+              手紙を書く
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
   );
 }

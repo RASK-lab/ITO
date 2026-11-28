@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Komorebi Gothic';
+  src: url('/fonts/komorebi-gothic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* デザインを入れるまでの最小限のスタイル（PC のブラウザ向け） */
 :root {
   font: 16px/1.6 system-ui, sans-serif;
@@ -272,6 +280,8 @@ dialog.share::backdrop {
   .share-buttons h2 {
     text-align: left;
   }
+}
+
 /* 靴下図鑑（body の grid/place-items を上書きして全幅に広げる） */
 .collection-page {
   width: 100vw;
@@ -488,4 +498,449 @@ dialog.share::backdrop {
   color: #8090a0;
   font-style: italic;
   margin: 0;
+}
+
+/* ============================================================
+   スタート画面（アニメ風・机の俯瞰シーン）
+   ============================================================ */
+
+.start-scene {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  background: #6a3010;
+}
+
+/* 背景画像（ビューポートを覆う） */
+.start-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* SVGシーンの上に乗る中央コンテンツ */
+.start-center {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  margin-top: 80px;
+}
+
+
+/* ── 左：本 + 封筒 ── */
+.start-left-props {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  flex-shrink: 0;
+  padding-bottom: 1rem;
+}
+
+.start-books {
+  position: relative;
+  width: 112px;
+  height: 92px;
+  transform: rotate(-3deg);
+  filter: drop-shadow(3px 7px 16px rgba(0, 0, 0, 0.55));
+}
+
+.start-book {
+  position: absolute;
+  left: 0;
+  width: 110px;
+  height: 28px;
+}
+
+/* ページ断面（右端） */
+.start-book::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #d8c8a8, #d8c8a8 1.5px,
+    #c8b898 1.5px, #c8b898 3px
+  );
+}
+
+/* 金の装飾ライン（背表紙） */
+.start-book::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 1.5px;
+  width: 48px;
+  background: rgba(200, 160, 60, 0.55);
+}
+
+.start-book--a {
+  bottom: 0;
+  background: linear-gradient(to right, #1e0e06 2%, #3a2010 15%, #4a2a18 85%, #2a1408 98%);
+}
+.start-book--b {
+  bottom: 28px;
+  transform: translateX(5px);
+  background: linear-gradient(to right, #2a1408 2%, #4a2818 15%, #3a2010 85%, #1e0e06 98%);
+}
+.start-book--c {
+  bottom: 56px;
+  transform: translateX(2px);
+  background: linear-gradient(to right, #180804 2%, #2e1808 15%, #3c2010 85%, #221008 98%);
+}
+
+/* リボン付き封筒 */
+.start-envelope-wrap {
+  position: relative;
+  width: 130px;
+  height: 102px;
+}
+
+.start-ribbon {
+  position: absolute;
+  width: 7px;
+  border-radius: 3.5px;
+  background: linear-gradient(to bottom, #c07888, #d08898, #b56878);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.start-ribbon--l {
+  height: 72px;
+  left: 18px;
+  top: 18px;
+  transform: rotate(-18deg);
+}
+
+.start-ribbon--r {
+  height: 56px;
+  left: 28px;
+  top: 32px;
+  transform: rotate(12deg);
+}
+
+.start-envelope {
+  position: absolute;
+  bottom: 0;
+  left: 4px;
+  width: 118px;
+  height: 80px;
+  background: linear-gradient(165deg, #f5edd8 0%, #ede0c0 100%);
+  border: 1px solid rgba(180, 150, 100, 0.35);
+  border-radius: 2px;
+  box-shadow: 3px 5px 18px rgba(0, 0, 0, 0.38);
+  transform: rotate(-7deg);
+  /* V字フラップ線 */
+  background-image:
+    linear-gradient(to bottom-right, rgba(0,0,0,0.045) 49.6%, transparent 49.6%),
+    linear-gradient(to bottom-left, rgba(0,0,0,0.045) 49.6%, transparent 49.6%),
+    linear-gradient(165deg, #f5edd8 0%, #ede0c0 100%);
+}
+
+/* 封蝋シール（封筒の中央） */
+.start-envelope__seal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #c05060 0%, #8b2838 50%, #6a1828 100%);
+  box-shadow: 1px 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* ── 中央：手紙 ── */
+.start-letter {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
+  width: min(56dvh, 80vw, 450px);
+  aspect-ratio: 2 / 3;
+  padding: 2rem 2rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4rem;
+
+  background: #c8a870 url('/letter-bg.png') center top / cover no-repeat;
+  box-shadow: 4px 12px 36px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+
+.start-letter__catch {
+  margin: 0;
+  font-family: 'Komorebi Gothic', serif;
+  font-size: 1.15rem;
+  color: #2a1808;
+  line-height: 1.9;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.start-letter__divider {
+  width: 55%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(140, 90, 20, 0.35), transparent);
+  margin: 0.4rem auto;
+}
+
+.start-ito-logo {
+  margin: 0;
+  font-family: 'Dancing Script', cursive;
+  font-size: 3.8rem;
+  font-weight: 600;
+  color: #2a1808;
+  text-align: center;
+  letter-spacing: 0.18em;
+  text-shadow: 1px 1px 3px rgba(180, 120, 40, 0.3);
+  line-height: 1.2;
+}
+
+/* 名前フォーム */
+.start-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+.start-form__label {
+  font-family: 'Komorebi Gothic', serif;
+  font-size: 0.9rem;
+  color: #3a2010;
+}
+
+.start-form__input {
+  box-sizing: border-box;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid rgba(140, 90, 20, 0.45);
+  padding: 0.3rem 0.5rem;
+  font: inherit;
+  font-size: 0.95rem;
+  color: #1a0e04;
+  outline: none;
+}
+
+.start-form__input:focus {
+  border-bottom-color: rgba(180, 120, 40, 0.8);
+}
+
+.start-form__btn {
+  box-sizing: border-box;
+  width: 100%;
+  height: 2.4rem;
+  font: inherit;
+  font-family: 'Komorebi Gothic', serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  background: linear-gradient(145deg, #b8922a, #7a5410);
+  border: none;
+  border-radius: 50px;
+  color: #fff8e8;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(100, 60, 10, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: transform 0.1s, box-shadow 0.1s;
+  margin-top: 0.2rem;
+}
+
+.start-form__btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(100, 60, 10, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* ── 右：封蝋スタンプ + インク壺 + 羽ペン ── */
+.start-right-props {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  flex-shrink: 0;
+  padding-bottom: 1rem;
+}
+
+/* 封蝋スタンプ */
+.start-seal-stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: rotate(12deg);
+  filter: drop-shadow(2px 5px 10px rgba(0, 0, 0, 0.5));
+}
+
+.start-seal-stamp__handle {
+  width: 14px;
+  height: 44px;
+  background: linear-gradient(to right, #5a3010, #8a5020, #6a3818);
+  border-radius: 7px 7px 2px 2px;
+}
+
+.start-seal-stamp__neck {
+  width: 22px;
+  height: 7px;
+  background: linear-gradient(to bottom, #d4a840, #a07820);
+}
+
+.start-seal-stamp__head {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #f5d87a 0%, #d4a030 25%, #a86c18 55%, #7a4a08 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(60, 30, 0, 0.6);
+}
+
+.start-seal-stamp__head span {
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(42, 20, 2, 0.82);
+}
+
+/* 羽ペン + インク壺のグループ */
+.start-quill-group {
+  position: relative;
+  width: 75px;
+  height: 220px;
+}
+
+/* 羽ペン */
+.start-quill {
+  position: absolute;
+  left: 10px;
+  top: 0;
+  width: 22px;
+  height: 185px;
+  transform: rotate(18deg);
+  transform-origin: bottom center;
+  z-index: 2;
+}
+
+/* 羽の部分 */
+.start-quill::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 112px;
+  background: linear-gradient(
+    160deg,
+    rgba(242, 238, 225, 0.5) 0%,
+    rgba(248, 244, 234, 0.95) 35%,
+    rgba(236, 230, 212, 0.9) 65%,
+    rgba(218, 210, 192, 0.75) 100%
+  );
+  clip-path: polygon(50% 0%, 100% 25%, 90% 80%, 50% 100%, 10% 80%, 0% 25%);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* 羽軸 */
+.start-quill::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 168px;
+  background: linear-gradient(
+    to bottom,
+    #e8e0c8 0%, #d0c090 25%, #c0a060 50%, #8a6020 80%, #5a3808 100%
+  );
+  border-radius: 1.5px 1.5px 1px 1px;
+}
+
+/* インク壺 */
+.start-inkwell {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 65px;
+}
+
+.start-inkwell__cap {
+  margin: 0 10px;
+  height: 14px;
+  background: radial-gradient(ellipse at 50% 20%, #e8c860 0%, #c09030 55%, #906810 100%);
+  border-radius: 50% 50% 20% 20% / 70% 70% 30% 30%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.start-inkwell__body {
+  position: relative;
+  width: 65px;
+  height: 56px;
+  background:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.04) 20%,
+      rgba(60, 42, 80, 0.5) 25%, rgba(42, 28, 60, 0.9) 60%,
+      rgba(28, 18, 48, 0.97) 100%
+    );
+  border: 1px solid rgba(180, 155, 110, 0.35);
+  border-radius: 2px;
+  box-shadow:
+    inset 2px 3px 8px rgba(255, 255, 255, 0.08),
+    0 5px 18px rgba(0, 0, 0, 0.6);
+}
+
+/* ガラスの光沢 */
+.start-inkwell__shine {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 10px;
+  height: 18px;
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.18), transparent);
+  border-radius: 2px;
+}
+
+/* 靴下図鑑リンク */
+.collection-link {
+  position: relative;
+  z-index: 2;
+  background: none;
+  border: 1px solid rgba(220, 185, 120, 0.45);
+  color: rgba(240, 210, 145, 0.85);
+  padding: 0.4rem 1.5rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.collection-link:hover {
+  color: #e8c870;
+  border-color: #c9a84c;
+}
+
+/* スマホ */
+@media (max-width: 660px) {
+  .start-letter {
+    width: min(90vw, 310px);
+  }
 }
