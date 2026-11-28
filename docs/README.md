@@ -9,6 +9,7 @@
 | [api-list.md](api-list.md) | API の一覧（1 枚で見渡す。実装済み、ほかのブランチ、Worker に頼む口、まだないもの） |
 | [api.md](api.md) | 実装済みの API の、送る内容・返る内容のくわしい形 |
 | [data.md](data.md) | データの形と置き場所（くつした、書かれた「と」、データベースの表） |
+| [../ml/README.md](../ml/README.md) | 印象分類の学習データ（入手したデータ、4 人でのラベル付け、書き出しの形、前処理） |
 | [socks.md](socks.md) | くつした 50 種のデータ（置き場所、名前の決まり、項目の意味、直し方） |
 | [git-conventions.md](git-conventions.md) | ブランチ名とコミットメッセージの決まり |
 | [spec/index.html](spec/index.html) | 仕様書（機能ごとに追記していく）。ブラウザで開いて読む |
