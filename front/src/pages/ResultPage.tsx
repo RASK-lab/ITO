@@ -39,6 +39,7 @@ export function ResultPage({ result, drawingImage, onAgain }: Props) {
       </div>
       {sharing && (
         <ShareDialog
+          drawingId={result.id}
           sock={result.sock}
           drawingImage={drawingImage}
           onClose={() => setSharing(false)}

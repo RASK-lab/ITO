@@ -4,6 +4,13 @@ import type { Sock } from "./api/drawings";
 export const CARD_WIDTH = 1080;
 export const CARD_HEIGHT = 1350;
 
+/**
+ * X のカード用の画像の大きさ。X の大きなカード（summary_large_image）に合う横長。
+ * バックエンド（back/src/share.py の CARD_WIDTH と CARD_HEIGHT）と同じ値にする。
+ */
+export const X_CARD_WIDTH = 1200;
+export const X_CARD_HEIGHT = 630;
+
 const FONT = "system-ui, sans-serif";
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -34,6 +41,20 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
   }
   if (line !== "") lines.push(line);
   return lines;
+}
+
+function toBlob(
+  canvas: HTMLCanvasElement,
+  type: string,
+  quality?: number,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("画像を作れません"))),
+      type,
+      quality,
+    );
+  });
 }
 
 /**
@@ -89,12 +110,72 @@ export async function makeShareCard(
   ctx.font = `30px ${FONT}`;
   ctx.fillText("ITO", center, 1290);
 
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("画像を作れません"))),
-      "image/png",
-    );
-  });
+  return toBlob(canvas, "image/png");
+}
+
+/**
+ * X のカード用の画像（JPEG。100〜200KB ほど）を作る。makeShareCard の横長版。
+ * 白地の左にくつした、右に書いた「と」、レアリティ、名前を並べる。見た目は仮のもの。
+ *
+ * X の小さな表示でも読めるよう、文字を大きくし、説明は載せない（説明は、ページの
+ * カードの指定のほうに入る）。X は画像を中央寄りで切り抜くことがあり、左下には題の札を
+ * 重ねるので、端と左下には大事なものを置かない。
+ *
+ * @param drawingImage 書いた「と」の画像（白地に黒の正方形。data URL）
+ */
+export async function makeXCard(
+  sock: Sock,
+  drawingImage: string,
+): Promise<Blob> {
+  const [sockImage, drawing] = await Promise.all([
+    loadImage(sock.image),
+    loadImage(drawingImage),
+  ]);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = X_CARD_WIDTH;
+  canvas.height = X_CARD_HEIGHT;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas を使えません");
+
+  // JPEG は透明を持てないので、必ず白で塗ってから描く
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, X_CARD_WIDTH, X_CARD_HEIGHT);
+
+  // 左にくつした
+  ctx.drawImage(sockImage, 50, 65, 500, 500);
+
+  // 右の列（幅 560）。上から、書いた「と」、レアリティ、名前。
+  const center = 870;
+  const columnWidth = 560;
+  ctx.drawImage(drawing, 730, 45, 280, 280);
+  ctx.strokeStyle = "#999";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(730, 45, 280, 280);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#555";
+  ctx.font = `30px ${FONT}`;
+  ctx.fillText("書いた「と」", center, 368);
+
+  ctx.font = `36px ${FONT}`;
+  ctx.fillText(sock.rarity, center, 442);
+
+  // 名前は 1 行。長い名前は、列の幅に収まるまで文字を小さくする。
+  ctx.fillStyle = "#222";
+  let nameSize = 68;
+  ctx.font = `bold ${nameSize}px ${FONT}`;
+  while (nameSize > 40 && ctx.measureText(sock.name).width > columnWidth) {
+    nameSize -= 2;
+    ctx.font = `bold ${nameSize}px ${FONT}`;
+  }
+  ctx.fillText(sock.name, center, 522, columnWidth);
+
+  ctx.fillStyle = "#555";
+  ctx.font = `30px ${FONT}`;
+  ctx.fillText("ITO", center, 588);
+
+  return toBlob(canvas, "image/jpeg", 0.85);
 }
 
 /**

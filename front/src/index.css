@@ -57,6 +57,50 @@ h1 {
   user-select: none;
 }
 
+/*
+ * ペンの入力の調査用の表示（アドレスに ?debug=pen を付けたときだけ出る。
+ * front/src/penDebug.ts）。画面に重ねて置くので、枠やボタンの位置は動かさない。
+ * 広い画面（iPad の横向きなど）では枠の左の余白に、狭い画面では下の端に出す。
+ * 幅は、左の余白（画面の幅から main の幅と余白を引いた半分）に合わせる。
+ * 下にある部品を押せるよう、ボタンのほかは押しても反応しないようにする。
+ */
+.pen-debug {
+  position: fixed;
+  top: 4rem;
+  bottom: 0.25rem;
+  left: 0.5rem;
+  width: calc(
+    (100vw - min(100vw - 3rem, 100dvh - 15rem, 560px) - 3rem) / 2 - 1rem
+  );
+  overflow: hidden;
+  font: 9px/1.25 ui-monospace, Menlo, monospace;
+  color: #222;
+  pointer-events: none;
+}
+
+.pen-debug button {
+  font: inherit;
+  pointer-events: auto;
+}
+
+.pen-debug pre {
+  margin: 0.25rem 0 0;
+  font: inherit;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+@media (max-width: 800px) {
+  .pen-debug {
+    top: auto;
+    right: 0.5rem;
+    bottom: 0.25rem;
+    width: auto;
+    max-height: 45dvh;
+    background: rgb(255 255 255 / 85%);
+  }
+}
+
 .actions {
   display: flex;
   gap: 0.5rem;
@@ -169,10 +213,10 @@ dialog.share::backdrop {
   width: 100%;
 }
 
+/* share-wide: 1 行を使うボタン（名前の長い「Instagram ストーリーズ」と、「とじる」） */
 .share-buttons h2,
 .share-buttons .share-note,
-.share-buttons .share-wide,
-.share-buttons button:last-of-type {
+.share-buttons .share-wide {
   grid-column: 1 / -1;
 }
 
