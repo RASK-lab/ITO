@@ -15,11 +15,12 @@
 |---|---|---|
 | `front/public/socks/*.webp` | `socks/original/*.png` を軽い WebP に変換したもの | 画面（`/socks/worn-01.webp` で見える） |
 | `back/src/resources/socks.json` | `socks/socks.json` をそのままコピーしたもの | バックエンド |
+| `front/public/share/*.jpg`、`front/public/s/*/index.html` | 台帳と元の画像から作った、シェア用のカード画像とページ | X などに投稿されたアドレスのカード |
 
 写しは手で編集しません。`data/socks/` を直したら、次のコマンドで作り直し、元データと写しを同じコミットに入れます。
 
 ```bash
-scripts/build-socks.sh   # cwebp が必要（brew install webp）
+scripts/build-socks.sh   # cwebp（brew install webp）と Pillow（pip install pillow）が必要
 ```
 
 項目の意味や、くつしたを足す・差し替える手順は [docs/socks.md](../docs/socks.md) にあります。

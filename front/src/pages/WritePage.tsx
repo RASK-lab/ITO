@@ -33,8 +33,11 @@ export function WritePage() {
   const [full, setFull] = useState(false);
   /** 「確定」を押してから、結果か失敗が決まるまで true。その間は待機中の画面を出す。 */
   const [sending, setSending] = useState(false);
-  /** 届いた結果。あれば結果の画面を出す。 */
-  const [result, setResult] = useState<SavedDrawing | null>(null);
+  /** 届いた結果と、そのとき書いた「と」の画像。あれば結果の画面を出す。 */
+  const [result, setResult] = useState<{
+    saved: SavedDrawing;
+    drawingImage: string;
+  } | null>(null);
   const [message, setMessage] = useState("");
 
   const empty = strokeCount === 0;
@@ -56,7 +59,7 @@ export function WritePage() {
       wait(MIN_WAITING_MS),
     ]);
     if (saved.status === "fulfilled") {
-      setResult(saved.value);
+      setResult({ saved: saved.value, drawingImage: drawing.image });
     } else {
       // 書く画面に戻す。書いた線は残っている。
       console.error(saved.reason);
@@ -116,7 +119,11 @@ export function WritePage() {
       </main>
 
       {result !== null ? (
-        <ResultPage result={result} onAgain={handleAgain} />
+        <ResultPage
+          result={result.saved}
+          drawingImage={result.drawingImage}
+          onAgain={handleAgain}
+        />
       ) : (
         sending && <WaitingPage />
       )}

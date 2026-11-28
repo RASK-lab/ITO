@@ -124,3 +124,94 @@ main.start {
   height: auto;
   aspect-ratio: 1;
 }
+
+/*
+ * シェアの画面（front/src/components/ShareDialog.tsx）。見た目は仮のもの。
+ * スマホでは下から出て、画像の下にボタンが 2 列に並ぶ。
+ */
+dialog.share {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100dvh;
+  margin: auto 0 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: #fff;
+  overflow: auto;
+}
+
+dialog.share::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+.share-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+/* 長押しで保存できるよう、画像のまま出す（背景にしない） */
+.share-card {
+  display: block;
+  width: auto;
+  height: min(45dvh, 400px);
+  border: 1px solid #ccc;
+}
+
+.share-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.share-buttons h2,
+.share-buttons .share-note,
+.share-buttons button:last-of-type {
+  grid-column: 1 / -1;
+}
+
+.share-buttons h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.share-buttons button {
+  height: 2.75rem;
+  font: inherit;
+  white-space: nowrap;
+}
+
+/* 高さを固定する。文が出ても、ボタンが動かないようにするため。 */
+.share-note {
+  min-height: 3em;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* パソコンでは中央に出て、画像の右にボタンが縦に並ぶ */
+@media (min-width: 720px) {
+  dialog.share {
+    width: auto;
+    margin: auto;
+  }
+
+  .share-body {
+    flex-direction: row;
+  }
+
+  .share-buttons {
+    grid-template-columns: 1fr;
+    width: 14rem;
+  }
+
+  .share-buttons h2 {
+    text-align: left;
+  }
+}
