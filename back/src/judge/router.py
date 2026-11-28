@@ -24,6 +24,18 @@ router = APIRouter(prefix="/api", tags=["judge"])
 EVAL_DIR = Path(__file__).resolve().parents[1] / "eval_data"
 
 
+def _log_request(req: JudgeRequest, response: JudgeResponse) -> None:
+    """DEV=1 のとき、判定したデータを eval_data/requests/ に保存する（調整・不具合調査用）。"""
+    if not settings.dev:
+        return
+    d = EVAL_DIR / "requests"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{datetime.now():%Y%m%d-%H%M%S-%f}.json").write_text(json.dumps({
+        "request": req.model_dump(), "sock_id": response.sock_id, "comment": response.comment,
+        "degraded": response.degraded, "analysis": response.debug,
+    }, ensure_ascii=False), encoding="utf-8")
+
+
 def _analyze(req: JudgeRequest) -> engine.Analysis:
     return engine.analyze(
         [s.points for s in req.strokes],
@@ -37,10 +49,12 @@ def _analyze(req: JudgeRequest) -> engine.Analysis:
 def judge_geometry(req: JudgeRequest) -> JudgeResponse:
     a = _analyze(req)
     d = engine.decide(a, impression=None, ai_beauty=None, ai_is_to=None)
-    return JudgeResponse(
+    res = JudgeResponse(
         sock_id=d["sock_id"], comment=engine.template_comment(d), degraded=True,
         debug=engine.debug_info(a, d, {"timings_ms": a.timings}) if settings.dev else None,
     )
+    _log_request(req, res)
+    return res
 
 
 @router.post("/judge/full", response_model=JudgeResponse, response_model_exclude_none=True,
@@ -82,10 +96,12 @@ async def judge_full(req: JudgeRequest) -> JudgeResponse:
         "sock_image_used": str(catalog.image_source(d["sock_id"])) if catalog.image_source(d["sock_id"]) else None,
         "timings_ms": {**a.timings, "ai_judge": int((t2 - t1) * 1000), "ai_comment": int((t3 - t2) * 1000)},
     }
-    return JudgeResponse(
+    res = JudgeResponse(
         sock_id=d["sock_id"], comment=comment, degraded=degraded,
         debug=engine.debug_info(a, d, extra) if settings.dev else None,
     )
+    _log_request(req, res)
+    return res
 
 
 @router.get("/socks", summary="靴下50種の一覧（socks.json の内容）")

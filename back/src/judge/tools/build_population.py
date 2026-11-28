@@ -23,7 +23,8 @@ MIN_SAMPLES = 8
 
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
-    files = sorted(EVAL_DIR.glob("*.json"))
+    # 確認ページで保存したサンプル（eval_data/*.json）と、DEV=1 で自動記録した判定（eval_data/requests/*.json）
+    files = sorted(EVAL_DIR.glob("*.json")) + sorted((EVAL_DIR / "requests").glob("*.json"))
     values: dict[str, list[float]] = defaultdict(list)
     for f in files:
         s = json.loads(f.read_text(encoding="utf-8"))
