@@ -144,6 +144,27 @@ docker compose cp backend:/app/data/objects/drawings/<id>_256.png .
 docker compose exec backend python -c "import gzip; print(gzip.decompress(open('data/objects/drawings/<id>.json.gz', 'rb').read()).decode())"
 ```
 
+## 本番での保存先の切り替え
+
+バックエンドは Cloudflare のコンテナで動きます。コンテナからは R2 と D1 を直接使えないので、Worker に HTTP で頼みます。切り替えは環境変数 1 つです。
+
+| 環境変数 `ITO_STORE_URL` | 保存先 |
+|---|---|
+| なし（手元） | フォルダ `back/data/objects/` と SQLite `back/data/ito.sqlite3` |
+| あり（本番。例: `http://ito.store`） | Worker 経由で R2 と D1 |
+
+バックエンドが Worker に頼む口は、次の 3 つです（仮。インフラ担当と合わせて決める）。どれも、成功なら 2xx を返します。
+
+| メソッドとパス | 本文 | Worker がすること |
+|---|---|---|
+| `PUT <ITO_STORE_URL>/objects/<キー>` | ファイルの中身そのまま | R2 に、そのキーで置く |
+| `DELETE <ITO_STORE_URL>/objects/<キー>` | なし | R2 から消す（無くても成功にする） |
+| `POST <ITO_STORE_URL>/db/query` | `{"sql": "INSERT INTO … VALUES (?, ?, …)", "params": [値, …]}` | `sql` に `params` を順に当てはめて、D1 で実行する |
+
+- キーは `drawings/<id>_1024.png` のような形で、手元と同じです。
+- D1 の表は、`back/src/db.py` の `SCHEMA` で先に作っておきます（本番では、バックエンドは表を作りません）。
+- 実装は `back/src/storage.py` と `back/src/db.py` にあります。実際の Worker とつないだ確認は、まだしていません。
+
 ## 決まっていないこと
 
 - 本番で、コンテナの中の Python から D1 と R2 にどうつなぐか（インフラ担当と相談）。

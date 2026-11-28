@@ -1,15 +1,26 @@
 """台帳（データベース）。
 
-手元では SQLite のファイルを使う。本番は Cloudflare D1 を予定していて、D1 の中身も
-SQLite なので、表の形と SQL はそのまま使える。差し替えるのはこのファイルだけで
-済むようにする。表の説明は docs/data.md にある。
+手元では SQLite のファイルを使う。本番では Cloudflare D1 を使う。D1 の中身も SQLite
+なので、表の形と SQL は同じ。コンテナからは D1 を直接使えないので、Worker に HTTP で
+頼む。表の説明は docs/data.md にある。
+
+本番かどうかは、環境変数 ITO_STORE_URL があるかで決まる。Worker に頼む口（仮。
+インフラ担当と合わせる）:
+
+    POST <ITO_STORE_URL>/db/query
+    本文（JSON）: {"sql": "INSERT INTO … VALUES (?, ?, …)", "params": [値, 値, …]}
+
+Worker は、sql を params の順に当てはめて D1 で実行し、成功なら 2xx を返す。
+D1 の表は、下の SCHEMA で先に作っておく（本番では、このファイルは表を作らない）。
 """
 
+import json
 import sqlite3
 import threading
+import urllib.request
 from contextlib import closing
 
-from src.settings import DATA_DIR
+from src.settings import DATA_DIR, STORE_TIMEOUT_SECONDS, STORE_URL
 
 DB_PATH = DATA_DIR / "ito.sqlite3"
 
@@ -70,9 +81,28 @@ def _connect() -> sqlite3.Connection:
     return connection
 
 
+def _query_store(sql: str, params: list) -> None:
+    """Worker に頼んで、D1 で SQL を実行する。2xx 以外や、つながらないときは例外になる。"""
+    request = urllib.request.Request(
+        f"{STORE_URL}/db/query",
+        data=json.dumps({"sql": sql, "params": params}).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=STORE_TIMEOUT_SECONDS):
+        pass
+
+
 def insert_drawing(record: dict) -> None:
     """書かれた「と」を 1 行足す。font、reading、is_public は、まだ入れない。"""
     columns = ", ".join(_DRAWING_COLUMNS)
+    if STORE_URL:
+        placeholders = ", ".join("?" for _ in _DRAWING_COLUMNS)
+        _query_store(
+            f"INSERT INTO drawings ({columns}) VALUES ({placeholders})",
+            [record[column] for column in _DRAWING_COLUMNS],
+        )
+        return
     placeholders = ", ".join(f":{column}" for column in _DRAWING_COLUMNS)
     with _WRITE_LOCK, closing(_connect()) as connection, connection:
         connection.execute(
