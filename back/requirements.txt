@@ -1,8 +1,8 @@
 fastapi
 uvicorn[standard]
+pillow==13.0.0
 numpy==2.5.5
 scipy==1.18.1
-pillow==13.0.0
 anthropic==2.14.0
 pydantic==2.14.4
 PyYAML==6.0.4
