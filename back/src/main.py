@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from src.collect import router as collect_router
 from src.drawings import router as drawings_router
 
 app = FastAPI(
@@ -10,6 +11,8 @@ app = FastAPI(
 )
 
 app.include_router(drawings_router)
+# 学習データ集め（docs/collect.md）
+app.include_router(collect_router)
 
 # 検証エラーの応答に入れる理由の数の上限。点の 1 個ごとに誤りがあると 20 万件を超え、
 # 応答が数十 MB になるので、先頭のこの数だけを返す。
