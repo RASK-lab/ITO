@@ -54,6 +54,8 @@ RESOURCES = Path(__file__).resolve().parent / "resources"
 # 画面に出したまま、まだラベルが来ていない画像を「付け中」とみなす秒数
 RESERVE_S = 120
 MAX_RATER_LENGTH = 20
+# 先読みのとき、押さえたままにできる画像の数の上限（表示中 1 + 送信待ちのぶん）
+MAX_KEEP = 20
 
 
 def _load(name: str):
@@ -180,16 +182,24 @@ def _progress(store: _Store, now: float) -> dict:
 
 
 @router.get("/next")
-def get_next(rater: str, skip: str = "", x_label_passcode: str | None = Header(None)) -> dict:
+def get_next(rater: str, skip: str = "", keep: str = "",
+             x_label_passcode: str | None = Header(None)) -> dict:
+    """keep: 画面に出したまま、または送信待ちの画像の id（カンマ区切り）。
+    これらの予約は外さずに延ばす（先読みしても、ほかの人に同じ画像を出さないため）。"""
     _check_passcode(x_label_passcode)
     rater = _check_rater(rater)
+    keep_ids = set(list(filter(None, keep.split(",")))[:MAX_KEEP])
     store = _loaded_store()
     with store.lock:
         now = time.time()
         reservations = _active_reservations(store, now)
-        # その人が前に出していた画像は、ほかの人に回せるようにする（1 人が出すのは 1 枚だけ）
-        for by in reservations.values():
-            by.pop(rater, None)
+        # その人が前に出していた画像は、ほかの人に回せるようにする。
+        # ただし keep にあるもの（出したまま・送信待ち）は押さえたまま、期限を延ばす。
+        for item_id, by in reservations.items():
+            if item_id in keep_ids and rater in by:
+                by[rater] = now
+            else:
+                by.pop(rater, None)
         reserved = {item_id: len(by) for item_id, by in reservations.items() if by}
         item, remaining = labeling_core.choose_next(
             ITEMS, store.labels(), CONFIG, rater, set(filter(None, skip.split(","))), reserved)

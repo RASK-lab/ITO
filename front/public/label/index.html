@@ -96,6 +96,18 @@ let config, rater, passcode = "", current = null, shownAt = 0;
 const seen = [];
 // 戻って付け直している間は、その画像の id（付け直したら次の新しい画像へ）
 let revisiting = false;
+// 「1 つ戻る」で、送信待ちの画像も表示できるように覚えておく（id -> item）
+const seenItems = new Map();
+// 戻る前に出していた、まだ付けていない画像（付け直したらここに戻る）
+let resume = null;
+// 送信待ちのラベル。1 件ずつ順番に送る。閉じても消えないよう localStorage にも置く
+const PENDING_KEY = "ito.label.pending";
+let pending = (() => { try { return JSON.parse(storageGet(PENDING_KEY) || "[]"); } catch { return []; } })();
+let sending = false;
+// 次に出す画像を取りに行っている Promise（先読み）
+let prefetched = null;
+// 次の画像を待っている間に、ボタンが二重に押されないようにする
+let busy = false;
 
 function storageGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
 function storageSet(key, value) { try { localStorage.setItem(key, value); } catch { /* 覚えられなくても続ける */ } }
@@ -110,7 +122,11 @@ async function api(path, body) {
   const res = await fetch("/api/label" + path, init);
   const data = await res.json().catch(() => ({}));
   if (res.status === 401) throw new Unauthorized(data.detail || "合言葉が違います");
-  if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.status);
+  if (!res.ok) {
+    const error = new Error(typeof data.detail === "string" ? data.detail : res.status);
+    error.status = res.status;
+    throw error;
+  }
   return data;
 }
 
@@ -152,14 +168,78 @@ function render(item, chosen) {
   shownAt = performance.now();
 }
 
-async function loadNext() {
+function savePending() { storageSet(PENDING_KEY, JSON.stringify(pending)); }
+
+// 押さえておく画像: 表示中・戻る前の画像・送信待ち
+function keepIds() {
+  return [...new Set([current?.id, resume?.id, ...pending.map((p) => p.item_id)].filter(Boolean))];
+}
+
+// 送信待ちを、古い順に 1 件ずつ送る。通信の失敗は待って送り直し、内容の誤り（4xx）は捨てる
+async function flush() {
+  if (sending) return;
+  sending = true;
+  try {
+    while (pending.length) {
+      try {
+        await api("/labels", pending[0]);
+        pending.shift();
+        savePending();
+        if (!pending.length) $("status").textContent = "";
+      } catch (e) {
+        if (e instanceof Unauthorized) { showStart(e.message); return; }
+        if (e.status >= 400 && e.status < 500) {
+          pending.shift();
+          savePending();
+          $("status").textContent = `記録できないラベルがありました（${e.message}）`;
+          continue;
+        }
+        $("status").textContent = `未送信 ${pending.length} 件。送り直しています…`;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
+  } finally {
+    sending = false;
+  }
+}
+
+function enqueue(entry) {
+  pending.push(entry);
+  savePending();
+  flush();   // 待たない（裏で送る）
+}
+
+// 次の画像を取りに行く。押さえている画像は出さない（skip）・予約を外さない（keep）
+function fetchNext() {
+  const ids = encodeURIComponent(keepIds().join(","));
+  return api(`/next?rater=${encodeURIComponent(rater)}&skip=${ids}&keep=${ids}`).then((data) => {
+    if (data.item) new Image().src = data.item.image;   // 画像も先に読み込んでおく
+    return data;
+  });
+}
+
+let prefetchedAt = 0;
+function prefetch() {
+  prefetchedAt = Date.now();
+  prefetched = fetchNext().catch(() => null);
+}
+
+function show(data) {
   revisiting = false;
-  const skip = current ? current.id : "";
-  const data = await api(`/next?rater=${encodeURIComponent(rater)}&skip=${encodeURIComponent(skip)}`);
-  $("count").textContent = `あなたが付けた数 ${data.done_by_me}`;
+  // サーバーの数は送信済みのぶんだけなので、送信待ちを足す（目安）
+  $("count").textContent = `あなたが付けた数 ${data.done_by_me + pending.length}`;
   showProgress(data.progress);
-  $("status").textContent = "";
+  if (!pending.length) $("status").textContent = "";
   render(data.item, null);
+  if (data.item) prefetch();   // 表示したら、すぐ次を取りに行く
+}
+
+async function loadAndShow() {
+  // 予約（120 秒）が切れる前のものだけ使う。古ければ取り直す
+  const fresh = prefetched && Date.now() - prefetchedAt < 60_000;
+  const data = (fresh && (await prefetched)) || (await fetchNext());
+  prefetched = null;
+  show(data);
 }
 
 function showStats(data) {
@@ -177,26 +257,52 @@ function escapeHtml(text) {
 }
 
 async function choose(key) {
-  if (!current) return;
+  if (!current || busy) return;
   const item = current;
-  try {
-    await api("/labels", { rater, item_id: item.id, label: key, ms: Math.round(performance.now() - shownAt) });
-  } catch (e) {
-    if (e instanceof Unauthorized) { showStart(e.message); return; }
-    $("status").textContent = `記録できませんでした（${e.message}）。もう一度押してください。`;
+  enqueue({ rater, item_id: item.id, label: key, ms: Math.round(performance.now() - shownAt) });
+  if (!revisiting) { seen.push(item.id); seenItems.set(item.id, item); }
+
+  // 戻って付け直したあとは、戻る前に出していた画像に戻る
+  if (revisiting && resume) {
+    const next = resume;
+    resume = null;
+    revisiting = false;
+    $("status").textContent = "";
+    render(next, null);
     return;
   }
-  if (!revisiting) seen.push(item.id);
-  await loadNext();
+
+  busy = true;
+  try {
+    await loadAndShow();
+  } catch (e) {
+    if (e instanceof Unauthorized) { showStart(e.message); return; }
+    $("status").textContent = `次の画像を読み込めませんでした（${e.message}）`;
+    $("retry").hidden = false;
+  } finally {
+    busy = false;
+  }
 }
 
 async function back() {
-  if (!seen.length) return;
+  if (!seen.length || busy) return;
   const id = revisiting ? seen[seen.indexOf(current.id) - 1] : seen[seen.length - 1];
   if (!id) return;
-  const data = await api(`/mine?rater=${encodeURIComponent(rater)}&item_id=${encodeURIComponent(id)}`);
+  if (!revisiting) resume = current;   // まだ付けていない、表示中の画像を覚えておく
+
+  // 送信待ちなら手元から、送信済みならサーバーから出す
+  const queued = [...pending].reverse().find((p) => p.item_id === id);
+  let item, label;
+  if (queued && seenItems.has(id)) {
+    item = seenItems.get(id);
+    label = queued.label;
+  } else {
+    const data = await api(`/mine?rater=${encodeURIComponent(rater)}&item_id=${encodeURIComponent(id)}`);
+    item = data.item;
+    label = data.label;
+  }
   revisiting = true;
-  render(data.item, data.label);
+  render(item, label);
   $("status").textContent = "前の画像です。選び直すと上書きします。";
 }
 
@@ -234,14 +340,14 @@ async function startWork() {
   $("start").hidden = true;
   $("work").hidden = false;
   $("who").textContent = rater;
+  flush();   // 前回の送信待ちが残っていれば送る
   try {
-    await loadNext();
+    await loadAndShow();
   } catch (e) {
     if (e instanceof Unauthorized) { showStart(e.message); return; }
     $("status").textContent = `読み込めませんでした（${e.message}）`;
   }
 }
-
 async function init() {
   config = await api("/config");
   buildButtons();
@@ -271,7 +377,17 @@ $("showStats").onclick = async () => {
     showStats(data);
   }
 };
-$("retry").onclick = () => { current = null; loadNext().catch((e) => { $("status").textContent = `読み込めませんでした（${e.message}）`; }); };
+$("retry").onclick = () => {
+  current = null;
+  prefetched = null;
+  loadAndShow().catch((e) => { $("status").textContent = `読み込めませんでした（${e.message}）`; });
+};
+// 通信が戻ったら、送信待ちを送る
+window.addEventListener("online", flush);
+// 送信待ちが残っているときは、閉じる前に確認する
+window.addEventListener("beforeunload", (e) => {
+  if (pending.length) { e.preventDefault(); e.returnValue = ""; }
+});
 // ほかのタブから戻ってきたら、みんなの進み具合を読み直す（開いているだけのときは問い合わせない）
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && !$("work").hidden) refreshProgress();
