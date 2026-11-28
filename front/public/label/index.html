@@ -1,5 +1,9 @@
 <!doctype html>
 <html lang="ja">
+<!--
+  ラベル付けの画面（アドレスは /label/）。API は back/src/labeling.py（本番）と
+  ml/labeling/server.py（手元）。どちらも同じ /api/label/* の形。くわしくは ml/README.md。
+-->
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -31,13 +35,16 @@
 </head>
 <body>
 <main>
-  <!-- 最初に、ラベルを付ける人を選ぶ（ブラウザに覚える） -->
+  <!-- 最初に、名前と合言葉を入れる（ブラウザに覚える） -->
   <section class="start" id="start" hidden>
     <h1>「と」のラベル付け</h1>
-    <p>画像の「と」を見て、印象にいちばん近いものを選んでください。考えこまず、2〜3 秒で直感で選びます。どこのデータかは表示しません。</p>
-    <label for="rater">あなたの名前</label>
-    <select id="rater"></select>
+    <p>AI の学習のために、画像の「と」を見て、印象にいちばん近いものを選んでください。考えこまず、2〜3 秒で直感で選びます。どこのデータかは表示しません。</p>
+    <label for="rater">あなたの名前（ほかの人と区別できれば、ニックネームでよい）</label>
+    <input id="rater" maxlength="20" autocomplete="nickname">
+    <label for="passcode" id="passcodeLabel">合言葉</label>
+    <input id="passcode" autocomplete="off">
     <button id="begin">始める</button>
+    <p class="status" id="startStatus" role="status"></p>
   </section>
 
   <section id="work" hidden>
@@ -63,10 +70,14 @@
     </details>
     <pre id="stats" hidden></pre>
   </section>
+  <footer class="status">
+    画像: Google Fonts の日本語フォント（OFL など）、
+    <a href="http://codh.rois.ac.jp/kmnist/">KMNIST データセット</a>（CODH 作成。『日本古典籍くずし字データセット』（国文研ほか所蔵）を翻案。CC BY-SA 4.0）
+  </footer>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
-let config, rater, current = null, shownAt = 0;
+let config, rater, passcode = "", current = null, shownAt = 0;
 // 「1 つ戻る」のための、このページで付けた画像の並び
 const seen = [];
 // 戻って付け直している間は、その画像の id（付け直したら次の新しい画像へ）
@@ -75,10 +86,17 @@ let revisiting = false;
 function storageGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
 function storageSet(key, value) { try { localStorage.setItem(key, value); } catch { /* 覚えられなくても続ける */ } }
 
+class Unauthorized extends Error {}
+
 async function api(path, body) {
-  const res = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || res.status);
+  const headers = { "X-Label-Passcode": passcode };
+  const init = body
+    ? { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body) }
+    : { headers };
+  const res = await fetch("/api/label" + path, init);
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) throw new Unauthorized(data.detail || "合言葉が違います");
+  if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.status);
   return data;
 }
 
@@ -99,7 +117,7 @@ function render(item, chosen) {
 async function loadNext() {
   revisiting = false;
   const skip = current ? current.id : "";
-  const data = await api(`/api/next?rater=${encodeURIComponent(rater)}&skip=${encodeURIComponent(skip)}`);
+  const data = await api(`/next?rater=${encodeURIComponent(rater)}&skip=${encodeURIComponent(skip)}`);
   $("count").textContent = `付けた数 ${data.done_by_me} ・ 残り ${data.remaining_for_me}`;
   render(data.item, null);
   $("status").textContent = "";
@@ -109,8 +127,9 @@ async function choose(key) {
   if (!current) return;
   const item = current;
   try {
-    await api("/api/label", { rater, item_id: item.id, label: key, ms: Math.round(performance.now() - shownAt) });
+    await api("/labels", { rater, item_id: item.id, label: key, ms: Math.round(performance.now() - shownAt) });
   } catch (e) {
+    if (e instanceof Unauthorized) { showStart(e.message); return; }
     $("status").textContent = `記録できませんでした（${e.message}）。もう一度押してください。`;
     return;
   }
@@ -122,7 +141,7 @@ async function back() {
   if (!seen.length) return;
   const id = revisiting ? seen[seen.indexOf(current.id) - 1] : seen[seen.length - 1];
   if (!id) return;
-  const data = await api(`/api/labels?rater=${encodeURIComponent(rater)}&item_id=${encodeURIComponent(id)}`);
+  const data = await api(`/mine?rater=${encodeURIComponent(rater)}&item_id=${encodeURIComponent(id)}`);
   revisiting = true;
   render(data.item, data.label);
   $("status").textContent = "前の画像です。選び直すと上書きします。";
@@ -150,29 +169,50 @@ function buildButtons() {
   $("hints").innerHTML = allChoices().map((c) => `<li><b>${c.label}</b>: ${c.hint}</li>`).join("");
 }
 
-function startWork() {
+function showStart(message) {
+  $("work").hidden = true;
+  $("start").hidden = false;
+  $("rater").value = rater || "";
+  $("passcode").value = passcode;
+  $("startStatus").textContent = message || "";
+}
+
+async function startWork() {
   $("start").hidden = true;
   $("work").hidden = false;
   $("who").textContent = rater;
-  loadNext().catch((e) => { $("status").textContent = `読み込めませんでした（${e.message}）`; });
+  try {
+    await loadNext();
+  } catch (e) {
+    if (e instanceof Unauthorized) { showStart(e.message); return; }
+    $("status").textContent = `読み込めませんでした（${e.message}）`;
+  }
 }
 
 async function init() {
-  config = await api("/api/config");
+  config = await api("/config");
   buildButtons();
-  $("rater").innerHTML = config.raters.map((r) => `<option>${r}</option>`).join("");
-  rater = storageGet("ito.label.rater");
-  if (rater && config.raters.includes(rater)) { startWork(); return; }
-  $("start").hidden = false;
+  $("passcode").hidden = $("passcodeLabel").hidden = !config.passcode_required;
+  rater = storageGet("ito.label.rater") || "";
+  passcode = storageGet("ito.label.passcode") || "";
+  if (rater) { startWork(); return; }
+  showStart("");
 }
 
-$("begin").onclick = () => { rater = $("rater").value; storageSet("ito.label.rater", rater); startWork(); };
-$("change").onclick = () => { $("work").hidden = true; $("start").hidden = false; };
+$("begin").onclick = () => {
+  rater = $("rater").value.trim();
+  passcode = $("passcode").value.trim();
+  if (!rater) { $("startStatus").textContent = "名前を入れてください"; return; }
+  storageSet("ito.label.rater", rater);
+  storageSet("ito.label.passcode", passcode);
+  startWork();
+};
+$("change").onclick = () => showStart("");
 $("back").onclick = back;
 $("showStats").onclick = async () => {
   const el = $("stats");
   el.hidden = !el.hidden;
-  if (!el.hidden) el.textContent = JSON.stringify(await api("/api/stats"), null, 2);
+  if (!el.hidden) el.textContent = JSON.stringify(await api("/stats"), null, 2);
 };
 document.addEventListener("keydown", (e) => {
   if ($("work").hidden) return;

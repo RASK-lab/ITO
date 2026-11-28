@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 ML = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ML))
 sys.path.insert(0, str(ML / "tools"))
-sys.path.insert(0, str(ML / "labeling"))
+sys.path.insert(0, str(ML.parent / "back"))
 
 from ito_ml.preprocess import IMAGE_SIZE, normalize, render_strokes  # noqa: E402
 
@@ -69,8 +69,8 @@ def test_split_is_stable_and_by_group():
 
 
 def test_fleiss_kappa():
-    import server
+    from src import labeling_core
 
     cats = ["a", "b"]
-    assert server.fleiss_kappa([{"a": 4}, {"b": 4}, {"a": 4}], cats) == 1.0
-    assert server.fleiss_kappa([{"a": 1}], cats) is None
+    assert labeling_core.fleiss_kappa([{"a": 4}, {"b": 4}, {"a": 4}], cats) == 1.0
+    assert labeling_core.fleiss_kappa([{"a": 1}], cats) is None
