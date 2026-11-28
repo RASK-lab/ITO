@@ -10,6 +10,8 @@ import math
 import numpy as np
 
 from ..geometry import match
+from ..geometry.metrics import procrustes_align
+from ..geometry.timing import speed_profile
 from ..geometry.normalize import normalize_xy, resample, smooth
 from ..refs import TARGET, load_references
 from .strokes import InputStrokes, stroke_length
@@ -100,13 +102,18 @@ def compute(inp: InputStrokes, endings_detected: list[str] | None = None) -> dic
     # --- B 運筆の流れ ---
     cvs, pauses = [], 0
     for s in strokes:
-        v = _speeds(s)
+        v, _ = speed_profile(s[:, :2], s[:, 2], 0.03)  # 30ms ごとに取り直した速さ
         if len(v) >= 6:
-            core = v[len(v) // 10: len(v) - len(v) // 10 or None]
+            # 書き始めと書き終わりの加速・減速は除いて、途中のむらを見る
+            core = v[len(v) // 6: len(v) - len(v) // 6 or None]
             if len(core) >= 3 and core.mean() > _EPS:
                 cvs.append(float(core.std() / core.mean()))
                 med = float(np.median(core))
-                pauses += int(np.sum(np.diff((core < med * 0.15).astype(int)) == 1))
+                slow = core < med * 0.2
+                # 2区間（60ms）以上続けて遅くなったら「途中で止まった」とみなす
+                runs = np.diff(np.concatenate([[0], slow.astype(int), [0]]))
+                starts, ends = np.where(runs == 1)[0], np.where(runs == -1)[0]
+                pauses += int(np.sum((ends - starts) >= 2))
     speed_cv = float(np.mean(cvs)) if cvs else None
     jit = []
     for s in strokes:
@@ -155,8 +162,13 @@ def compute(inp: InputStrokes, endings_detected: list[str] | None = None) -> dic
         gap12 = float(np.min(np.linalg.norm(strokes[s2][:, :2] - end1, axis=1)) / char_size)
 
     # --- E 大胆さ ---
-    ref_angle = _principal_angle(np.concatenate(ref_n))
-    tilt = abs(_principal_angle(np.concatenate(user_n)) - ref_angle)
+    # 傾き: 対応した画どうしをお手本に重ねたときの回転角（主軸の向きは横長の字で反転するので使わない）
+    tilt = 0.0
+    if pairs_for_tilt := [(i, j) for j, i in ref_of.items()]:
+        U = np.concatenate([user_n[i] for i, _ in pairs_for_tilt])
+        Rr = np.concatenate([ref_n[j] for _, j in pairs_for_tilt])
+        _, _, rot, _ = procrustes_align(U, Rr)
+        tilt = abs(math.degrees(math.atan2(rot[0, 1], rot[0, 0])))
     placement = None
     pairs = [(i, j) for j, i in ref_of.items()]
     if pairs:

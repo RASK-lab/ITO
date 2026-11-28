@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
+from .. import engine
 from ..analysis import population
 from ..analysis.axes import DEVICE_DEPENDENT
 
@@ -28,8 +29,15 @@ def main() -> None:
     values: dict[str, list[float]] = defaultdict(list)
     for f in files:
         s = json.loads(f.read_text(encoding="utf-8"))
-        feats = s["analysis"]["features"]
-        types = [st["pointerType"] for st in s["request"]["strokes"]]
+        req = s["request"]
+        types = [st["pointerType"] for st in req["strokes"]]
+        # 保存時の値ではなく、今のプログラムで計算し直す（計算方法を直しても使えるように）
+        a = engine.analyze([st["points"] for st in req["strokes"]], types, (req["canvas"]["width"], req["canvas"]["height"]))
+        feats = {k: (None if v is None else float(v)) for k, v in a.features.items()}
+        feats["geometry"] = float(a.geometry.total)
+        aj = (s.get("analysis") or {}).get("ai_judgement")
+        if aj:
+            feats["ai_beauty"] = (aj["balance"] + aj["line_quality"] + aj["endings"] + aj["overall"]) / 4 * 10
         device = max(set(types), key=types.count)
         for k, v in feats.items():
             if v is None or k not in population.DEFAULTS:

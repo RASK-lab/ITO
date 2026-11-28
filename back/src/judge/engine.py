@@ -15,12 +15,24 @@ from .geometry.score import evaluate
 from .refs import DISTRACTORS, TARGET
 from .schemas import GeometryResult
 
-QUALITY_BOUNDS = (30, 50, 70, 85)   # Q1 < 30 <= Q2 < 50 <= Q3 < 70 <= Q4 < 85 <= Q5
+# 品質点は「みんなの平均 = 50、標準偏差 = 15」になるよう正規化する。
+# 境界は正規分布でおよそ 10% / 20% / 40% / 20% / 10% に分かれる位置
+QUALITY_BOUNDS = (31, 42, 58, 69)   # Q1 < 31 <= Q2 < 42 <= Q3 < 58 <= Q4 < 69 <= Q5
+# 幾何評価と AI 評価は相関があるので、平均した z 値の広がりを戻す係数
+_Z_MEAN_SPREAD = 0.87
 IS_TO_MIN_GEOMETRY = 35
 
 
 def quality_rank(score: float) -> int:
     return 1 + sum(score >= b for b in QUALITY_BOUNDS)
+
+
+def quality_score(geometry_total: float, ai_beauty: float | None) -> float:
+    """幾何評価と AI 美しさを、それぞれみんなの平均・ばらつきで正規化してから合わせた品質点（平均50）。"""
+    z = population.zscore("geometry", geometry_total)
+    if ai_beauty is not None:
+        z = (z + population.zscore("ai_beauty", ai_beauty)) / 2 / _Z_MEAN_SPREAD
+    return float(min(100.0, max(0.0, 50 + 15 * z)))
 
 
 @dataclass
@@ -79,7 +91,7 @@ def decide(a: Analysis, *, impression: str | None, ai_beauty: float | None, ai_i
     """解析結果と AI① の結果から靴下を決める。AI の結果が無ければ解析エンジンだけで決める。"""
     if impression not in a.axes.candidates:
         impression = a.axes.candidates[0]
-    q = 0.5 * a.geometry.total + 0.5 * ai_beauty if ai_beauty is not None else float(a.geometry.total)
+    q = quality_score(a.geometry.total, ai_beauty)
     rank = quality_rank(q)
     # 「と」ではない判定は、解析エンジンと AI の両方が否定したときだけ（AI が無ければ解析エンジンのみ）
     is_to = a.is_to_geometry or (ai_is_to is True)
@@ -91,7 +103,7 @@ def decide(a: Analysis, *, impression: str | None, ai_beauty: float | None, ai_i
     sid = catalog.rare_sock_id(special) or catalog.sock_id(rank, impression)
     return {
         "sock_id": sid, "rare": catalog.rare_sock_id(special) is not None, "special": special, "impression": impression,
-        "quality_score": round(q, 1), "quality_rank": rank, "is_to": is_to, "special_checks": checks,
+        "quality_score": round(q, 1), "quality_rank": rank, "ai_beauty": ai_beauty, "is_to": is_to, "special_checks": checks,
     }
 
 
@@ -106,7 +118,8 @@ def template_comment(decision: dict) -> str:
 def debug_info(a: Analysis, decision: dict, extra: dict | None = None) -> dict:
     return {
         "sock": {k: catalog.item(decision["sock_id"])[k] for k in ("name", "rarity", "comment")},
-        "quality": {"rank": decision["quality_rank"], "score": decision["quality_score"], "geometry": a.geometry.total},
+        "quality": {"rank": decision["quality_rank"], "score": decision["quality_score"], "geometry": a.geometry.total,
+                    "ai_beauty": decision.get("ai_beauty")},
         "impression": {
             "id": decision["impression"], "candidates": a.axes.candidates,
             "axes": {k: round(v, 2) for k, v in a.axes.scores.items()},

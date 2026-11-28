@@ -35,6 +35,9 @@ DEFAULTS: dict[str, tuple[float, float]] = {
     "placement": (0.04, 0.03),
     "size": (0.55, 0.18),           # キャンバス長辺に対する比
     "pressure": (0.5, 0.2),
+    # 品質の正規化用（幾何評価 0〜100、AI美しさ 10〜100）
+    "geometry": (55.0, 10.0),
+    "ai_beauty": (35.0, 15.0),
 }
 
 LABELS = {
@@ -45,6 +48,7 @@ LABELS = {
     "stroke1_len": "1画目の長さ", "aspect": "横幅（縦横比）", "pocket": "ふところの広さ",
     "gap12": "1画目と2画目の間隔", "tilt": "字全体の傾き", "placement": "配置のお手本からのずれ",
     "size": "字の大きさ", "pressure": "筆圧",
+    "geometry": "お手本との一致度", "ai_beauty": "AIの美しさ評価",
 }
 
 Z_CLIP = 3.0

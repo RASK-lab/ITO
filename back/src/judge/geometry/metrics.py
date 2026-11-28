@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from .normalize import PreparedStroke, arc_length, resample
+from .timing import speed_profile
 
 _EPS = 1e-9
 
@@ -126,18 +127,15 @@ def classify_ending(s: PreparedStroke) -> str:
             if cos < np.cos(np.deg2rad(60)):
                 return "hane"
 
-    # 止め / 払い: 終端 10% の速さと全体の速さの比
-    seg = np.diff(cum)
-    good = dt > 0
-    if good.sum() < 3:
+    # 止め / 払い: 一定時間ごとに取り直した速さで、終端 10% の速さと全体の速さを比べる
+    step = max(float(t[-1] - t[0]) / 40.0, 1e-6)
+    v, d = speed_profile(xy, t, step)
+    if len(v) < 6:
         return "unknown"
-    speed = np.zeros_like(seg)
-    speed[good] = seg[good] / dt[good]
-    v_med = float(np.median(speed[good]))
+    v_med = float(np.median(v))
     if v_med < _EPS:
         return "unknown"
-    end_idx = np.searchsorted(cum, L * 0.9)
-    tail = speed[max(end_idx - 1, 0):][good[max(end_idx - 1, 0):]]
+    tail = v[d >= L * 0.9]
     if len(tail) == 0:
         return "unknown"
     ratio = float(tail.mean()) / v_med

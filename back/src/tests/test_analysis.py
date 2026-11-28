@@ -81,7 +81,7 @@ def test_decide_uses_ai_impression_only_from_candidates():
     assert engine.decide(a, impression=outsider, ai_beauty=60, ai_is_to=True)["impression"] == c[0]
 
 
-@pytest.mark.parametrize("score,rank", [(0, 1), (29.9, 1), (30, 2), (55, 3), (70, 4), (84.9, 4), (85, 5), (100, 5)])
+@pytest.mark.parametrize("score,rank", [(0, 1), (30.9, 1), (31, 2), (50, 3), (58, 4), (68.9, 4), (69, 5), (100, 5)])
 def test_quality_rank(score, rank):
     assert engine.quality_rank(score) == rank
 
