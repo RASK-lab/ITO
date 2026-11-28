@@ -1,5 +1,6 @@
 import { useEffect, useImperativeHandle, useRef } from "react";
 import type { PointerEvent as ReactPointerEvent, Ref } from "react";
+import { getStroke } from "perfect-freehand";
 
 /** 入力の種類 */
 export type PointerType = "mouse" | "touch" | "pen";
@@ -54,8 +55,15 @@ type Props = {
   onChange?: (strokeCount: number, full: boolean) => void;
 };
 
-/** 枠の一辺に対する線の太さ */
+/** 枠の一辺に対する線の太さ（筆圧が真ん中のときの太さ） */
 const LINE_WIDTH_RATIO = 0.02;
+/**
+ * 線の書き味（perfect-freehand に渡す値。どれも 0〜1）。
+ * thinning: 筆圧で太さが変わる幅。0.6 なら、太さは LINE_WIDTH_RATIO の 0.4〜1.6 倍。
+ * smoothing: 線のふちのなめらかさ。
+ * streamline: 手ぶれの補正。大きいほどなめらかだが、線が手の動きから遅れる。
+ */
+const STROKE_OPTIONS = { thinning: 0.6, smoothing: 0.5, streamline: 0.5 };
 /**
  * 覚える位置の範囲。枠の外へ出た線は、枠の一辺ぶん外側で止める
  * （記録する座標では -1024〜2048。API の受け入れ範囲と同じ）。
@@ -121,36 +129,65 @@ function countPoints(strokes: Stroke[]) {
   return strokes.reduce((count, stroke) => count + stroke.points.length, 0);
 }
 
-function toLines(strokes: Stroke[]) {
-  return strokes.map((stroke) => stroke.points);
+/**
+ * 1 本の線の形（ふちをなぞった、塗りつぶす形）を作る。太さは筆圧で変える。
+ * ペンは、端末が報告した筆圧を使う。マウスと指は筆圧を測れないので、書く速さから作る
+ * （ゆっくりは太く、速いと細い）。記録する筆圧（toRecordedPoint）は、ここでは変えない。
+ *
+ * @param finished 書き終えた線なら true。書いている途中の線は、終わりの形がまだ決まらない。
+ */
+function toPath(stroke: Stroke, size: number, finished: boolean) {
+  const outline = getStroke(
+    stroke.points.map((p) => [p.x * size, p.y * size, p.pressure]),
+    {
+      ...STROKE_OPTIONS,
+      size: size * LINE_WIDTH_RATIO,
+      simulatePressure: stroke.pointerType !== "pen",
+      last: finished,
+    },
+  );
+  const path = new Path2D();
+  if (outline.length === 0) return path;
+  // ふちの点を、角が出ないよう曲線でつなぐ
+  path.moveTo(outline[0][0], outline[0][1]);
+  outline.forEach(([x, y], i) => {
+    const [nextX, nextY] = outline[(i + 1) % outline.length];
+    path.quadraticCurveTo(x, y, (x + nextX) / 2, (y + nextY) / 2);
+  });
+  path.closePath();
+  return path;
 }
 
 /**
- * 線を描く。lines は、線ごとの点の並び。
- * 太さは一定で、筆圧や入力の種類では変えない。
+ * 書き終えた線の形の控え。線を足すたびに全部を描き直すので、書き終えた線の形は作り直さない。
+ * 枠の大きさ（size）が変わったら作り直す。
  */
-function drawLines(
+const pathCache = new WeakMap<Stroke, { size: number; path: Path2D }>();
+
+/**
+ * 線を描く。
+ *
+ * @param active 書いている途中の線。形が毎回変わるので、控えを使わない。
+ */
+function drawStrokes(
   ctx: CanvasRenderingContext2D,
-  lines: Point[][],
+  strokes: Stroke[],
   size: number,
   color: string,
+  active?: Stroke,
 ) {
-  const lineWidth = size * LINE_WIDTH_RATIO;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.lineWidth = lineWidth;
-  ctx.strokeStyle = color;
   ctx.fillStyle = color;
-  for (const line of lines) {
-    // 長さ 0 の線は canvas では描かれないので、始点には必ず丸を置く。
-    // 動かさずに押して離しただけの点も、これで見える。
-    ctx.beginPath();
-    ctx.arc(line[0].x * size, line[0].y * size, lineWidth / 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(line[0].x * size, line[0].y * size);
-    for (const point of line) ctx.lineTo(point.x * size, point.y * size);
-    ctx.stroke();
+  for (const stroke of strokes) {
+    if (stroke === active) {
+      ctx.fill(toPath(stroke, size, false));
+      continue;
+    }
+    let cached = pathCache.get(stroke);
+    if (cached?.size !== size) {
+      cached = { size, path: toPath(stroke, size, true) };
+      pathCache.set(stroke, cached);
+    }
+    ctx.fill(cached.path);
   }
 }
 
@@ -159,11 +196,19 @@ function inkColor(canvas: HTMLCanvasElement) {
   return getComputedStyle(canvas).color;
 }
 
-function redraw(canvas: HTMLCanvasElement | null, strokes: Stroke[]) {
+/**
+ * 全部の線を描き直す。線の形は、点が足されるたびに書きはじめまでさかのぼって変わるので、
+ * 足した分だけを描き足すことはできない。
+ */
+function redraw(
+  canvas: HTMLCanvasElement | null,
+  strokes: Stroke[],
+  active?: Stroke,
+) {
   const ctx = canvas?.getContext("2d");
   if (!canvas || !ctx) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawLines(ctx, toLines(strokes), canvas.width, inkColor(canvas));
+  drawStrokes(ctx, strokes, canvas.width, inkColor(canvas), active);
 }
 
 /** 表示の大きさと画面の画素密度に、描画用の画素数を合わせる */
@@ -232,7 +277,7 @@ export function WritingCanvas({ ref, disabled, onChange }: Props) {
         if (!ctx) return null;
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, 0, size, size);
-        drawLines(ctx, toLines(strokes), size, "#000");
+        drawStrokes(ctx, strokes, size, "#000");
         return {
           image: out.toDataURL("image/png"),
           width: size,
@@ -295,10 +340,9 @@ export function WritingCanvas({ ref, disabled, onChange }: Props) {
     activeRef.current = { pointerId: event.pointerId, stroke };
     strokesRef.current = [...strokesRef.current, stroke];
     pointCountRef.current += 1;
-    const ctx = canvas.getContext("2d");
-    if (ctx) drawLines(ctx, [stroke.points], canvas.width, inkColor(canvas));
     // この 1 点で上限に達したら、線はここで終える
     if (pointCountRef.current >= MAX_POINTS) activeRef.current = null;
+    redraw(canvas, strokesRef.current, activeRef.current?.stroke);
     notifyChange();
   }
 
@@ -311,28 +355,26 @@ export function WritingCanvas({ ref, disabled, onChange }: Props) {
     // （右クリックのメニューが出たときなど）
     if ((event.buttons & 1) === 0) {
       activeRef.current = null;
+      redraw(event.currentTarget, strokesRef.current);
       return;
     }
     const canvas = event.currentTarget;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
     // 画面の更新より細かく届いた点も使い、速く書いても線が角ばらないようにする
     const native = event.nativeEvent;
     const events = native.getCoalescedEvents?.() ?? [];
     const { pointerType, points } = active.stroke;
-    const from = points[points.length - 1];
     // 上限までの残りの分だけ足す（書いている途中の線があるとき、残りは必ず 1 以上）
     const added = (events.length > 0 ? events : [native])
       .slice(0, MAX_POINTS - pointCountRef.current)
       .map((e) => toPoint(e, canvas, startedAt, toPressure(e, pointerType)));
     points.push(...added);
     pointCountRef.current += added.length;
-    drawLines(ctx, [[from, ...added]], canvas.width, inkColor(canvas));
     // 上限に達したら、押したままでも線をそこで終える
     if (pointCountRef.current >= MAX_POINTS) {
       activeRef.current = null;
       notifyChange();
     }
+    redraw(canvas, strokesRef.current, activeRef.current?.stroke);
   }
 
   function handlePointerEnd(event: ReactPointerEvent<HTMLCanvasElement>) {
@@ -355,6 +397,8 @@ export function WritingCanvas({ ref, disabled, onChange }: Props) {
       if (pointCountRef.current >= MAX_POINTS) notifyChange();
     }
     activeRef.current = null;
+    // 線の終わりの形を決めて、描き直す
+    redraw(canvasRef.current, strokesRef.current);
   }
 
   return (
