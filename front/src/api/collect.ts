@@ -8,7 +8,7 @@ import type { Drawing, PointerType } from "../components/WritingCanvas";
 /** 書いてもらう 1 回分。instruction は画面に出す指示の文（サーバーが決める）。 */
 export type CollectTrial = {
   trial: number;
-  /** 指示の種類（ラベル）。natural は「いつもどおり」 */
+  /** 指示の種類（ラベル）。印象 10 種のキー（kawaii など） */
   condition: string;
   instruction: string;
 };
@@ -25,8 +25,6 @@ export type CollectProfile = {
   calligraphy: "school" | "lessons" | "advanced" | "unknown";
   /** 学習に使ってよいか。true でないと記録しない */
   consentTrain: boolean;
-  /** ほかの人に見せてよいか（あとで「良い」の比べ合いに使う） */
-  consentShow: boolean;
 };
 
 /** 1 個の「と」に添える、書いたときの様子 */
@@ -81,7 +79,6 @@ export async function saveSample(
       dominant_hand: profile.dominantHand,
       calligraphy: profile.calligraphy,
       consent_train: profile.consentTrain,
-      consent_show: profile.consentShow,
       display_px: Math.round(context.displayPx),
       device_pixel_ratio: window.devicePixelRatio || 1,
       redo_count: context.redoCount,

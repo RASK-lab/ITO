@@ -32,7 +32,6 @@ const EMPTY_PROFILE: CollectProfile = {
   dominantHand: "unknown",
   calligraphy: "unknown",
   consentTrain: false,
-  consentShow: false,
 };
 
 export function CollectPage() {
@@ -82,7 +81,7 @@ export function CollectPage() {
         <h1>「と」を集めています</h1>
         <p>
           AI の学習のために、ひらがなの「と」を 6 回書いてください（2〜3 分）。
-          最初の 2 回はいつもどおりに、残りは「可愛く」などの指示に合わせて書きます。
+          1 回ごとに「可愛く」「かっこよく」などの指示が出るので、それに合わせて書きます。
         </p>
         <p className="collect-note">
           記録するのは、書いた線（位置と時間、筆圧）、画像、書く枠の大きさ、下の 2
@@ -132,16 +131,6 @@ export function CollectPage() {
               }
             />
             書いた「と」を、AI の学習に使うことに同意します（必須）
-          </label>
-          <label className="collect-check">
-            <input
-              type="checkbox"
-              checked={profile.consentShow}
-              onChange={(e) =>
-                setProfile({ ...profile, consentShow: e.target.checked })
-              }
-            />
-            書いた「と」を、名前なしでほかの人に見せてもかまいません（「良い」の比べ合いに使います。任意）
           </label>
           <button type="submit" disabled={!profile.consentTrain || busy}>
             始める

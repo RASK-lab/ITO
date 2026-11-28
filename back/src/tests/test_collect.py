@@ -27,7 +27,7 @@ def _body(**overrides):
     body = dict(
         protocol=collect.PROTOCOL, writer_id="0f3c2a1e-1111-4222-8333-444455556666",
         session_id="abcdef12-1111-4222-8333-444455556666", trial=2, condition="kawaii",
-        dominant_hand="right", calligraphy="school", consent_train=True, consent_show=False,
+        dominant_hand="right", calligraphy="school", consent_train=True,
         display_px=360, device_pixel_ratio=3.0, redo_count=1, target="と",
         canvas={"width": 1024, "height": 1024},
         strokes=[{"pointerType": "touch", "points": [[100.0, 100.0, 0, 0.5], [200.5, 150.0, 30, 0.5]]}],
@@ -37,11 +37,11 @@ def _body(**overrides):
     return {**body, **overrides}
 
 
-def test_plan_starts_natural_and_balances(client):
+def test_plan_is_balanced_impressions(client):
     trials = client.get("/api/collect/plan?pointer=touch").json()["trials"]
     conditions = [t["condition"] for t in trials]
-    assert conditions[:2] == ["natural", "natural"]
-    assert len(set(conditions[2:])) == collect.IMPRESSION_TRIALS
+    assert len(set(conditions)) == len(conditions) == collect.IMPRESSION_TRIALS
+    assert set(conditions) <= set(collect.IMPRESSIONS)
     # 1 件記録すると、その指示は（件数が多いので）次の回に配られない
     assert client.post("/api/collect/samples", json=_body(condition="kawaii")).status_code == 201
     for _ in range(5):

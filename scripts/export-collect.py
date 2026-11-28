@@ -60,7 +60,6 @@ def main() -> None:
             sample = dict(row)
             # 線のデータは、/api/drawings の線のデータと同じ形（target, canvas, strokes）
             sample["drawing"] = json.loads(sample.pop("strokes_json"))
-            sample["consent_show"] = bool(sample["consent_show"])
             f.write(json.dumps(sample, ensure_ascii=False) + "\n")
             counts[(sample["protocol"], sample["condition"], sample["pointer_type"])] += 1
             writers.add(sample["writer_id"])

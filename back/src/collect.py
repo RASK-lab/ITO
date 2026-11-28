@@ -3,11 +3,12 @@
 アプリ本体（/api/drawings）とは別に、学習用の「と」を集める。くわしくは docs/collect.md。
 
 集め方の考え方:
-- 「良い」「可愛い」などを、あとから人が見てラベルを付けるのではない。書く人に
+- 学習するのは、印象 10 種への分類だけ。
+- 「可愛い」などを、あとから人が見てラベルを付けるのではない。書く人に
   「◯◯に書いてください」と頼み、その頼み（指示。condition）をそのままラベルにする。
   主観のぶれが入らない。
-- 1 回（セッション）で 6 回書いてもらう。最初の 2 回は「いつもどおり」、残り 4 回は
-  印象 10 種の指示から、集まった件数の少ないものを配る（種類ごとの数をそろえる）。
+- 1 回（セッション）で 6 回書いてもらう。印象 10 種の指示から、集まった件数の
+  少ないものを 6 つ配る（種類ごとの数をそろえる）。
 - 書いた人のことは、利き手と習字の経験だけを聞く。名前、性別、年齢は聞かない。
 - 書いた人は、ブラウザに覚えさせた匿名の ID（writer_id）で区別する。同じ人の字が
   学習と評価の両方に入らないように分けるため（書いた人で分けた検証）。
@@ -56,17 +57,12 @@ router = APIRouter(prefix="/api/collect", tags=["collect（学習データ集め
 # 集め方の版。指示の文や、1 回に書いてもらう数を変えたら上げる（混ぜて学習しないため）。
 PROTOCOL = "v1"
 
-# 「いつもどおり」。ラベルとしては「指示なし」。印象の分類には使わず、
-# 「良い」の比べ合い（あとで集める）と、平均的な書き方を作るのに使う。
-NATURAL = "natural"
-
 # 指示（condition）と、画面に出す文。キーは分析の印象のキー（back/src/judge の
 # analysis/axes.py と同じ）。ラベルは、このキーそのもの。
 # 文は「印象の言葉（そのものずばり）＋ 書き方の手がかり」にしている。言葉だけだと
 # 人によって受け取り方がばらつき、手がかりだけだと印象の言葉とずれるため。
 # 「繊細」に「小さく」を入れないのは、大きさだけで当てられるラベルにしないため。
 INSTRUCTIONS: dict[str, str] = {
-    NATURAL: "いつもどおりに",
     "teinei": "丁寧に（ゆっくり、ていねいに）",
     "zatsu": "雑に（急いで、なぐり書きで）",
     "tappitsu": "達筆に（習字の先生のつもりで、流れるように）",
@@ -78,12 +74,10 @@ INSTRUCTIONS: dict[str, str] = {
     "koseiteki": "個性的に（自由に、崩して）",
     "sensai": "繊細に（細やかに、そっと）",
 }
-IMPRESSIONS = tuple(key for key in INSTRUCTIONS if key != NATURAL)
+IMPRESSIONS = tuple(INSTRUCTIONS)
 
-# 1 回で書いてもらう数。最初に「いつもどおり」をこの数だけ（指示を見る前の、
-# 自然な字にするため）、そのあと印象の指示をこの数だけ。
-NATURAL_TRIALS = 2
-IMPRESSION_TRIALS = 4
+# 1 回で書いてもらう数（10 種のうち 6 種。2〜3 分で終わる量）
+IMPRESSION_TRIALS = 6
 
 # 利き手と反対の手は、手を持ちかえるので最後にする
 LAST_CONDITIONS = ("bukiyou",)
@@ -134,8 +128,6 @@ class CollectSampleIn(StrokeData):
     calligraphy: Literal["school", "lessons", "advanced", "unknown"]
     # 学習に使うことへの同意。true でなければ記録しない。
     consent_train: bool
-    # 書いた「と」を、ほかの人に見せてよいか（あとで「良い」の比べ合いに使うかどうか）
-    consent_show: bool
     # 書く枠の、画面での一辺（CSS ピクセル）と画素密度。端末の大きさで書き方が変わるため。
     display_px: int = Field(ge=50, le=10_000)
     device_pixel_ratio: float = Field(ge=0.1, le=20)
@@ -168,7 +160,7 @@ def make_plan(pointer_type: str) -> list[str]:
     chosen = order[:IMPRESSION_TRIALS]
     random.shuffle(chosen)  # 指示の順番による影響を減らす
     chosen.sort(key=lambda c: c in LAST_CONDITIONS)  # 手を持ちかえるものは最後
-    return [NATURAL] * NATURAL_TRIALS + chosen
+    return chosen
 
 
 @router.get("/plan", summary="1 回分の、書いてもらう順番と指示")
@@ -234,7 +226,6 @@ def create_sample(sample: CollectSampleIn) -> CollectSampleOut:
         "instruction": INSTRUCTIONS[sample.condition],
         "dominant_hand": sample.dominant_hand,
         "calligraphy": sample.calligraphy,
-        "consent_show": int(sample.consent_show),
         # 最初の線の入力の種類（途中で変わることはほとんどない。線ごとの種類は strokes_json にある）
         "pointer_type": sample.strokes[0].pointerType,
         "display_px": sample.display_px,
