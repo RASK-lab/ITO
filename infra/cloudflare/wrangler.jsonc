@@ -1,0 +1,44 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+
+  "name": "hackathon-ito-app",
+  "main": "./worker.ts",
+  "compatibility_date": "2026-11-28",
+
+  "assets": {
+    "directory": "../../front/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "containers": [
+    {
+      "class_name": "Backend",
+      "image": "../docker/back.Dockerfile",
+      "image_build_context": "../../back",
+      "instance_type": "lite",
+      "max_instances": 1
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BACKEND",
+        "class_name": "Backend"
+      }
+    ]
+  },
+
+  "exports": {
+    "Backend": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}
