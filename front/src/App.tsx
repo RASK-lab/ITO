@@ -2,13 +2,19 @@ import { useEffect, useState } from "react";
 import { StartPage } from "./pages/StartPage";
 import { WritePage } from "./pages/WritePage";
 import { CollectionPage } from "./pages/CollectionPage";
+import { CollectPage } from "./pages/CollectPage";
 import { loadUserName, saveUserName } from "./userName";
 
 /** 書く画面のアドレス（例: http://localhost:5173/#write）。最初の画面は # なし。 */
 const WRITE_HASH = "#write";
 const COLLECTION_HASH = "#collection";
+/**
+ * 学習データ集めの画面（docs/collect.md）。最初の画面からはつながず、このアドレスを配る。
+ * 例: https://<公開しているサイト>/#collect
+ */
+const COLLECT_HASH = "#collect";
 
-type Screen = "start" | "write" | "collection";
+type Screen = "start" | "write" | "collection" | "collect";
 
 /**
  * いまのアドレスから、出す画面を決める。
@@ -21,6 +27,9 @@ function screenFromAddress(): Screen {
   }
   if (window.location.hash === COLLECTION_HASH) {
     return "collection";
+  }
+  if (window.location.hash === COLLECT_HASH) {
+    return "collect";
   }
   if (window.location.hash !== "") {
     window.history.replaceState(
@@ -64,6 +73,8 @@ function App() {
       onCollection={() => { window.location.hash = COLLECTION_HASH; }}
     />
   );
+
+  if (screen === "collect") return <CollectPage />;
 
   if (screen === "collection") return (
     <CollectionPage onBack={() => { window.location.hash = ""; }} />
