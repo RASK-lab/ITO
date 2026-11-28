@@ -12,8 +12,8 @@ from anthropic import AsyncAnthropic
 
 from ..settings import settings
 from . import usage
-from .prompts import COMMENT_SYSTEM, DESCRIBE_SYSTEM, JUDGE_SYSTEM
-from .schemas import SockComment, SockDescription, ToJudgement
+from .prompts import COMMENT_SYSTEM, JUDGE_SYSTEM
+from .schemas import SockComment, ToJudgement
 
 log = logging.getLogger(__name__)
 
@@ -87,11 +87,3 @@ async def comment(to_png: bytes, sock_image: Path | str | None, user_text: str) 
         content.append({"type": "image", "source": {"type": "url", "url": sock_image}})
     content.append({"type": "text", "text": user_text})
     return await _parse(COMMENT_SYSTEM, content, SockComment, model=settings.comment_model)
-
-
-async def describe_sock(sock_image: Path) -> SockDescription | None:
-    """靴下画像の見た目の説明（事前生成用）。"""
-    return await _parse(DESCRIBE_SYSTEM, [
-        file_image_block(sock_image),
-        {"type": "text", "text": "この靴下の見た目を説明してください。"},
-    ], SockDescription)

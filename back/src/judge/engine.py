@@ -83,14 +83,13 @@ def decide(a: Analysis, *, impression: str | None, ai_beauty: float | None, ai_i
     rank = quality_rank(q)
     # 「と」ではない判定は、解析エンジンと AI の両方が否定したときだけ（AI が無ければ解析エンジンのみ）
     is_to = a.is_to_geometry or (ai_is_to is True)
-    rare_id, checks = rare.judge(
+    special, checks = rare.judge(
         is_to=is_to, n_strokes=len(a.inp.kept), order_reversed=a.order_reversed,
         features=a.features, axis_scores=a.axes.scores, quality=q,
     )
-    sid = rare_id or catalog.sock_id(rank, impression)
     return {
-        "sock_id": sid, "rare": rare_id, "impression": impression, "quality_score": round(q, 1),
-        "quality_rank": rank, "is_to": is_to, "rare_checks": checks,
+        "sock_id": catalog.sock_id(rank, impression), "special": special, "impression": impression,
+        "quality_score": round(q, 1), "quality_rank": rank, "is_to": is_to, "special_checks": checks,
     }
 
 
@@ -99,11 +98,12 @@ def plain_png(a: Analysis) -> bytes:
 
 
 def template_comment(decision: dict) -> str:
-    return comments.template_comment(decision["sock_id"], decision["impression"], decision["quality_rank"])
+    return comments.template_comment(decision["sock_id"], decision["impression"], decision["special"])
 
 
 def debug_info(a: Analysis, decision: dict, extra: dict | None = None) -> dict:
     return {
+        "sock": {k: catalog.item(decision["sock_id"])[k] for k in ("name", "rarity", "comment")},
         "quality": {"rank": decision["quality_rank"], "score": decision["quality_score"], "geometry": a.geometry.total},
         "impression": {
             "id": decision["impression"], "candidates": a.axes.candidates,
@@ -111,7 +111,8 @@ def debug_info(a: Analysis, decision: dict, extra: dict | None = None) -> dict:
         },
         "is_to": {"final": decision["is_to"], "geometry": a.is_to_geometry, "geometry_total": a.geometry.total,
                   "distractors": a.distractor_totals},
-        "rare_checks": decision["rare_checks"],
+        "special": decision["special"],
+        "special_checks": decision["special_checks"],
         "features": {k: (None if v is None else round(float(v), 4)) for k, v in a.features.items()},
         "feature_text": a.feature_descriptions(),
         "geometry_items": a.geometry.items.model_dump(),

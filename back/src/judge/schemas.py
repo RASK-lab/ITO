@@ -81,7 +81,7 @@ class GeometryResult(BaseModel):
 
 
 class JudgeResponse(BaseModel):
-    sock_id: str = Field(description="靴下の ID（画像ファイル名と同じ）。Q{品質1-5}-{印象} または R-{レア名}", examples=["Q4-atatakai"])
+    sock_id: str = Field(description="靴下の ID（画像ファイル名と同じ）。socks.json の id（印象×綺麗さのマスの靴下）", examples=["REGAL-08"])
     comment: str = Field(description="ユーザーに表示するコメント")
     degraded: bool = Field(description="AI を使わずに判定した場合 true（コメントはテンプレート文）")
     debug: dict | None = Field(default=None, description="内部の評価（DEV=1 のときだけ）")

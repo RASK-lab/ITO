@@ -44,7 +44,9 @@ def test_invalid_point_is_rejected():
 
 
 def test_socks_list():
-    assert len(api.get("/api/socks").json()) == 60
+    socks = api.get("/api/socks").json()
+    assert len(socks) == 50
+    assert {"id", "name", "image", "classification"} <= set(socks[0])
 
 
 def test_refs_endpoint():
@@ -71,6 +73,7 @@ def test_full_with_llm(monkeypatch):
 
     async def comment(png, sock_image, text):
         seen["text"] = text
+        seen["image"] = sock_image
         return SockComment(comment="AIのコメントです。")
 
     monkeypatch.setattr(llm_client, "judge", judge)
@@ -79,8 +82,12 @@ def test_full_with_llm(monkeypatch):
     assert body["degraded"] is False
     assert body["comment"] == "AIのコメントです。"
     assert "選ばれた靴下" in seen["text"]
+    assert seen["image"] is not None  # 靴下画像を AI に渡している
     second = json.loads(seen["qjson"])[CANDIDATES_KEY][1]["id"]
-    assert body["sock_id"].endswith("-" + second) or body["sock_id"].startswith("R-")
+    from src.judge import catalog
+    feature = catalog.item(body["sock_id"])["classification"]["feature"]
+    assert catalog.FEATURE_TO_IMPRESSION[feature] == second
+    assert "靴下の説明" in seen["text"]
 
 
 def test_dev_endpoints_disabled_by_default():

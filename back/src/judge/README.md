@@ -1,10 +1,10 @@
 # 判定エンジン（AI 担当）
 
-ひらがなの「と」を評価し、60種類の靴下から1足を選んで、AI のコメントを添えて返す。
+ひらがなの「と」を評価し、50種類の靴下から1足を選んで、AI のコメントを添えて返す。
 
-1. **筆跡解析エンジン**: 誤タップ除去 → 「と」判定（形の近い字 ト・こ・し・て と比較） → 幾何評価（KanjiVG のお手本と照合） → 特徴量20個 → 印象の5軸と候補3つ → レア判定
+1. **筆跡解析エンジン**: 誤タップ除去 → 「と」判定（形の近い字 ト・こ・し・て と比較） → 幾何評価（KanjiVG のお手本と照合） → 特徴量20個 → 印象の5軸と候補3つ → 特別な書き方の検出
 2. **AI① 判定（Claude）**: 画像＋定量データから、候補3つのうち印象を1つ決め、美しさを採点
-3. **靴下ID**: 品質点（幾何評価 0.5 ＋ AI美しさ 0.5）→ 5ランク。`Q{品質}-{印象}` またはレア `R-{名前}`
+3. **靴下ID**: 品質点（幾何評価 0.5 ＋ AI美しさ 0.5）→ 5ランク（＝綺麗さ）。印象×綺麗さのマスにある靴下の ID（例: `REGAL-01`）
 4. **AI② コメント（Claude）**: 「と」の画像＋選ばれた靴下の画像＋靴下の見た目の説明から、なぜこの靴下になったのかを書く
 
 品質と印象はユーザーに見せない（靴下の選定にだけ使う）。
@@ -15,7 +15,7 @@
 |---|---|---|
 | POST | `/api/judge/full` | 解析エンジン＋AI①②。`{sock_id, comment, degraded}` |
 | POST | `/api/judge/geometry` | AI なし（解析エンジン＋テンプレートのコメント）。同じ形 |
-| GET | `/api/socks` | 靴下60種の ID 一覧 |
+| GET | `/api/socks` | 靴下50種の一覧（socks.json の items） |
 | GET | `/api/refs/to` | 「と」のお手本の点列 |
 | GET | `/api/dev/playground` | 確認ページ（`DEV=1` のときだけ） |
 | POST | `/api/dev/samples` | 検証サンプルを `back/src/eval_data/` に保存（`DEV=1` のときだけ） |
@@ -36,28 +36,23 @@
 レスポンス:
 
 ```json
-{ "sock_id": "Q4-atatakai", "comment": "…", "degraded": false }
+{ "sock_id": "REGAL-08", "comment": "…", "degraded": false }
 ```
 
 `DEV=1` のときだけ `debug`（品質・印象・軸スコア・特徴量など）が付く。
 
-## 靴下ID
+## 靴下（デザイン担当のデータ）
 
-- 通常 50 種: `Q{1〜5}-{印象}`。印象は `koseiteki` `zatsu` `kawaii` `teinei` `kakkoii` `sensai` `tappitsu` `bukiyou` `atatakai` `tsumetai`
-- レア 10 種: `R-katahou` `R-ippon` `R-uragaeshi` `R-kedama` `R-kinshi` `R-idaten` `R-amikake` `R-baby` `R-loose` `R-niji`
-
-## 靴下画像とコメント
-
-1. 靴下画像を `catalog/images/<ID>.png` に置く（SVG は Claude が読めないので PNG に書き出す）
-2. `python -m src.judge.tools.describe_socks` で見た目の説明 `catalog/sock_descriptions.json` を作る
-3. 説明に読み違いがあれば手で直す
-
-画像が無い間は、AI② は説明なし・画像なしでコメントを書く。
+- `catalog/socks.json` と `catalog/images/*.png` はデザイン担当のデータをそのまま置いている（50種）
+- 各靴下は「印象（feature）10種 × 綺麗さ（beauty）1〜5」の50マスに1足ずつ対応。判定エンジンは印象と品質ランク（＝綺麗さ）を決めて、そのマスの靴下の `id`（例: `REGAL-01`）を返す
+- AI② コメントには、靴下の画像と socks.json の `name` `rarity` `comment` `review.reason` を渡す
+- データを差し替えたら `python -c "from src.judge import catalog; print(catalog.check())"` で欠けがないか確認できる（空リストなら OK）
+- 特別な書き方（一筆書き、書き順が逆、極端に速い など）は靴下の選定には使わず、コメントで触れる
 
 ## 調整
 
 - サンプルを確認ページで保存したら `python -m src.judge.tools.build_population` で特徴量の平均・標準偏差を更新する
-- 軸の重み: `analysis/axes.py`、レアのしきい値: `analysis/rare.py`、品質ランクの境界: `engine.py`
+- 軸の重み: `analysis/axes.py`、特別な書き方のしきい値: `analysis/rare.py`、品質ランクの境界: `engine.py`
 
 ## 環境変数
 

@@ -115,6 +115,7 @@ function show(r) {
   $("result").innerHTML = `
     <div class="muted">靴下ID${r.degraded ? "（AIなし）" : ""}</div>
     <div class="sock">${r.sock_id}</div>
+    ${d.sock ? `<div><b>${d.sock.name}</b>（${d.sock.rarity}）<br><span class="muted">${d.sock.comment}</span></div>` : ""}
     <img class="sockimg" src="/api/dev/sock-image/${r.sock_id}" onerror="this.remove()">
     <p class="comment">${r.comment}</p>
     <hr>

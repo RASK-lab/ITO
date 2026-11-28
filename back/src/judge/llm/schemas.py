@@ -25,13 +25,3 @@ class ToJudgement(BaseModel):
 class SockComment(BaseModel):
     """AI② コメント。ユーザーに表示する。"""
     comment: str
-
-
-class SockDescription(BaseModel):
-    """靴下画像の見た目の説明（事前生成）。"""
-    colors: list[str]
-    pattern: str
-    material_look: str
-    condition: str
-    motifs: list[str]
-    overall: str

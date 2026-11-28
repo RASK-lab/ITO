@@ -86,36 +86,53 @@ def test_quality_rank(score, rank):
     assert engine.quality_rank(score) == rank
 
 
-def test_rares():
+def test_special_writing():
     base = dict(is_to=True, n_strokes=2, order_reversed=False,
                 features={"duration": 1.5, "size": 0.5, "sloppiness": 0}, axis_scores={"a": 1.0}, quality=60)
     assert rare.judge(**base)[0] is None
-    assert rare.judge(**{**base, "is_to": False})[0] == "R-katahou"
-    assert rare.judge(**{**base, "n_strokes": 1})[0] == "R-ippon"
-    assert rare.judge(**{**base, "order_reversed": True})[0] == "R-uragaeshi"
-    assert rare.judge(**{**base, "quality": 97})[0] == "R-kinshi"
-    assert rare.judge(**{**base, "features": {"duration": 0.3, "size": 0.5}})[0] == "R-idaten"
-    assert rare.judge(**{**base, "features": {"duration": 9, "size": 0.5}})[0] == "R-amikake"
-    assert rare.judge(**{**base, "features": {"duration": 1.5, "size": 0.05}})[0] == "R-baby"
-    assert rare.judge(**{**base, "features": {"duration": 1.5, "size": 0.97}})[0] == "R-loose"
-    assert rare.judge(**{**base, "features": {"duration": 1.5, "size": 0.5, "sloppiness": 3}})[0] == "R-kedama"
-    assert rare.judge(**{**base, "axis_scores": {"a": 0.1, "b": -0.2}})[0] == "R-niji"
+    assert rare.judge(**{**base, "is_to": False})[0] == "not_to"
+    assert rare.judge(**{**base, "n_strokes": 1})[0] == "one_stroke"
+    assert rare.judge(**{**base, "order_reversed": True})[0] == "reversed_order"
+    assert rare.judge(**{**base, "quality": 97})[0] == "masterpiece"
+    assert rare.judge(**{**base, "features": {"duration": 0.3, "size": 0.5}})[0] == "very_fast"
+    assert rare.judge(**{**base, "features": {"duration": 9, "size": 0.5}})[0] == "very_slow"
+    assert rare.judge(**{**base, "features": {"duration": 1.5, "size": 0.05}})[0] == "very_small"
+    assert rare.judge(**{**base, "features": {"duration": 1.5, "size": 0.97}})[0] == "very_large"
+    assert rare.judge(**{**base, "features": {"duration": 1.5, "size": 0.5, "sloppiness": 3}})[0] == "many_taps"
+    assert rare.judge(**{**base, "axis_scores": {"a": 0.1, "b": -0.2}})[0] == "balanced"
+    assert set(rare.NOTES) == set(rare.judge(**base)[1])
 
 
-def test_catalog_has_60_ids_and_templates_for_all():
+def test_catalog_is_complete():
+    assert catalog.check() == []
     ids = catalog.all_ids()
-    assert len(ids) == 60 and len(set(ids)) == 60
-    for sid in ids:
-        imp = "kawaii" if sid.startswith("R-") else sid.split("-", 1)[1]
-        rank = 3 if sid.startswith("R-") else int(sid[1])
-        assert comments.template_comment(sid, imp, rank)
+    assert len(ids) == 50 and len(set(ids)) == 50
 
 
-def test_all_50_regular_socks_are_reachable():
-    ids = set(catalog.all_ids())
-    for q in (10, 40, 60, 75, 90):
-        for imp in axes.IMPRESSIONS:
-            assert catalog.sock_id(engine.quality_rank(q), imp) in ids
+def test_every_cell_maps_to_its_sock():
+    seen = set()
+    for imp in axes.IMPRESSIONS:
+        for q in (1, 2, 3, 4, 5):
+            sid = catalog.sock_id(q, imp)
+            c = catalog.item(sid)["classification"]
+            assert catalog.FEATURE_TO_IMPRESSION[c["feature"]] == imp and c["beauty"] == q
+            seen.add(sid)
+    assert len(seen) == 50
+
+
+def test_template_comment_uses_sock_name():
+    for sid in catalog.all_ids():
+        imp = catalog.FEATURE_TO_IMPRESSION[catalog.item(sid)["classification"]["feature"]]
+        text = comments.template_comment(sid, imp)
+        assert catalog.item(sid)["name"] in text
+
+
+def test_decided_sock_matches_rank_and_impression():
+    a = _analyze(from_reference("と", noise=0.03, seed=5))
+    d = engine.decide(a, impression=a.axes.candidates[1], ai_beauty=40, ai_is_to=True)
+    c = catalog.item(d["sock_id"])["classification"]
+    assert c["beauty"] == d["quality_rank"]
+    assert catalog.FEATURE_TO_IMPRESSION[c["feature"]] == a.axes.candidates[1]
 
 
 def test_percentile_text():

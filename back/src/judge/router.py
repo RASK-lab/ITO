@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 
 from . import catalog, engine
+from .analysis import rare
 from .analysis.axes import IMPRESSION_LABELS
 from .llm import client as llm
 from .llm.prompts import comment_user_text
@@ -66,7 +67,7 @@ async def judge_full(req: JudgeRequest) -> JudgeResponse:
             sock_label=catalog.label(sid),
             impression_label=IMPRESSION_LABELS[d["impression"]],
             quality_rank=d["quality_rank"],
-            rare_label=catalog.RARES.get(d["rare"]) if d["rare"] else None,
+            special_note=rare.NOTES.get(d["special"]) if d["special"] else None,
             judge_reason=j.impression_reason,
             feature_text=a.axes.reasons.get(d["impression"], []),
             description=catalog.description(sid),
@@ -87,9 +88,9 @@ async def judge_full(req: JudgeRequest) -> JudgeResponse:
     )
 
 
-@router.get("/socks", summary="靴下60種の ID 一覧")
+@router.get("/socks", summary="靴下50種の一覧（socks.json の内容）")
 def list_socks() -> list[dict]:
-    return [{"id": sid, "label": catalog.label(sid)} for sid in catalog.all_ids()]
+    return [catalog.item(sid) for sid in catalog.all_ids()]
 
 
 @router.get("/refs/to", summary="「と」のお手本の点列（0〜1 座標、書き順どおり）")

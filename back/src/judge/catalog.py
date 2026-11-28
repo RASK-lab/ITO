@@ -1,4 +1,8 @@
-"""靴下60種の ID。画像ファイル名も ID と同じ（例: Q3-kawaii.png）。"""
+"""靴下50種のカタログ（デザイン担当の catalog/socks.json をそのまま読む）。
+
+socks.json の各靴下は「印象（feature）10種 × 綺麗さ（beauty）1〜5」の50マスに1足ずつ対応する。
+判定エンジンは印象と品質ランク（＝綺麗さ）を決め、そのマスの靴下を選ぶ。
+"""
 
 from __future__ import annotations
 
@@ -6,50 +10,62 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-from .analysis.axes import IMPRESSION_LABELS, IMPRESSIONS
+from .analysis.axes import IMPRESSIONS
 from .settings import settings
 
 CATALOG_DIR = Path(__file__).resolve().parent / "catalog"
-IMAGES_DIR = CATALOG_DIR / "images"
-DESCRIPTIONS_FILE = CATALOG_DIR / "sock_descriptions.json"
+SOCKS_FILE = CATALOG_DIR / "socks.json"
 
 QUALITY_RANKS = (1, 2, 3, 4, 5)
 
-RARES: dict[str, str] = {
-    "R-katahou": "片方だけの靴下",
-    "R-ippon": "1本の糸",
-    "R-uragaeshi": "裏返しの靴下",
-    "R-kedama": "毛玉だらけの靴下",
-    "R-kinshi": "金糸の靴下",
-    "R-idaten": "韋駄天ソックス",
-    "R-amikake": "編みかけの靴下",
-    "R-baby": "ベビーソックス",
-    "R-loose": "ルーズソックス",
-    "R-niji": "虹色の靴下",
+# socks.json の feature（日本語）→ 判定エンジンの印象 ID
+FEATURE_TO_IMPRESSION = {
+    "個性的": "koseiteki", "雑": "zatsu", "可愛い": "kawaii", "かわいい": "kawaii", "丁寧": "teinei",
+    "かっこいい": "kakkoii", "繊細": "sensai", "達筆": "tappitsu", "不器用": "bukiyou",
+    "暖かい": "atatakai", "温かい": "atatakai", "冷たい": "tsumetai",
 }
 
 
+@lru_cache(maxsize=1)
+def _data() -> dict:
+    return json.loads(SOCKS_FILE.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def _items() -> dict[str, dict]:
+    return {it["id"]: it for it in _data()["items"]}
+
+
+@lru_cache(maxsize=1)
+def _grid() -> dict[tuple[str, int], str]:
+    grid = {}
+    for it in _data()["items"]:
+        c = it["classification"]
+        grid[(FEATURE_TO_IMPRESSION[c["feature"]], int(c["beauty"]))] = it["id"]
+    return grid
+
+
 def sock_id(quality_rank: int, impression: str) -> str:
-    return f"Q{quality_rank}-{impression}"
+    """印象と品質ランク（綺麗さ1〜5）に対応する靴下の ID。"""
+    return _grid()[(impression, quality_rank)]
 
 
 def all_ids() -> list[str]:
-    return [sock_id(q, i) for q in QUALITY_RANKS for i in IMPRESSIONS] + list(RARES)
+    return list(_items())
+
+
+def item(sid: str) -> dict:
+    return _items()[sid]
 
 
 def label(sid: str) -> str:
-    if sid in RARES:
-        return RARES[sid]
-    q, imp = sid[1], sid.split("-", 1)[1]
-    return f"品質{q}・{IMPRESSION_LABELS[imp]}"
+    it = item(sid)
+    return f"{it['name']}（{it['rarity']}）"
 
 
 def image_path(sid: str) -> Path | None:
-    for ext in (".png", ".jpg", ".jpeg", ".webp"):
-        p = IMAGES_DIR / f"{sid}{ext}"
-        if p.is_file():
-            return p
-    return None
+    p = CATALOG_DIR / item(sid)["image"]
+    return p if p.is_file() else None
 
 
 def image_source(sid: str) -> Path | str | None:
@@ -58,16 +74,34 @@ def image_source(sid: str) -> Path | str | None:
     if local is not None:
         return local
     if settings.sock_image_base_url:
-        return f"{settings.sock_image_base_url.rstrip('/')}/{sid}.png"
+        return f"{settings.sock_image_base_url.rstrip('/')}/{Path(item(sid)['image']).name}"
     return None
 
 
-@lru_cache(maxsize=1)
-def _descriptions() -> dict:
-    if DESCRIPTIONS_FILE.is_file():
-        return json.loads(DESCRIPTIONS_FILE.read_text(encoding="utf-8"))
-    return {}
+def description(sid: str) -> dict:
+    """AI② に渡す、デザイン担当による靴下の説明。"""
+    it = item(sid)
+    c = it["classification"]
+    return {
+        "名前": it["name"],
+        "レアリティ": it["rarity"],
+        "見た目": it["comment"],
+        "この靴下が印象に合う理由": c["review"]["reason"],
+    }
 
 
-def description(sid: str) -> dict | None:
-    return _descriptions().get(sid)
+def check() -> list[str]:
+    """カタログの不備（50マスの欠け・印象名の不一致・画像の欠け）を返す。"""
+    problems = []
+    for it in _data()["items"]:
+        f = it["classification"]["feature"]
+        if f not in FEATURE_TO_IMPRESSION:
+            problems.append(f"{it['id']}: 未知の印象 {f}")
+        if not (CATALOG_DIR / it["image"]).is_file():
+            problems.append(f"{it['id']}: 画像が無い {it['image']}")
+    grid = _grid()
+    for imp in IMPRESSIONS:
+        for q in QUALITY_RANKS:
+            if (imp, q) not in grid:
+                problems.append(f"{imp} × 綺麗さ{q}: 靴下が無い")
+    return problems
