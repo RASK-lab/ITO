@@ -9,7 +9,9 @@ from pathlib import Path
 
 def _load_dotenv() -> None:
     """依存を増やさないための簡易 .env 読み込み（既に設定済みの環境変数は上書きしない）。"""
-    for path in (Path.cwd() / ".env", Path(__file__).resolve().parents[2] / ".env"):
+    here = Path(__file__).resolve()
+    # back/.env とリポジトリ直下の .env（compose の env_file と同じ場所）を探す
+    for path in (Path.cwd() / ".env", here.parents[2] / ".env", here.parents[3] / ".env"):
         if not path.is_file():
             continue
         for line in path.read_text(encoding="utf-8").splitlines():

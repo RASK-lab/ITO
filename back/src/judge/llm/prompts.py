@@ -60,7 +60,8 @@ DESCRIBE_SYSTEM = """\
 
 
 def comment_user_text(*, sock_label: str, impression_label: str, quality_rank: int, rare_label: str | None,
-                      judge_reason: str | None, feature_text: list[str], description: dict | None) -> str:
+                      judge_reason: str | None, feature_text: list[str], description: dict | None,
+                      has_image: bool = False) -> str:
     quality_words = {1: "かなり傷んだ", 2: "くたびれた", 3: "ふつうの", 4: "上質な", 5: "高級な"}[quality_rank]
     data = {
         "選ばれた靴下": sock_label,
@@ -71,8 +72,18 @@ def comment_user_text(*, sock_label: str, impression_label: str, quality_rank: i
         "字の特徴（計測値）": feature_text,
         "靴下の見た目の説明": description,
     }
+    if has_image:
+        head = "1枚目がユーザーが書いた「と」、2枚目が選ばれた靴下の画像です。\n"
+    elif description:
+        head = "画像はユーザーが書いた「と」です。靴下の画像は無いので、「靴下の見た目の説明」を靴下の見た目として使ってください。\n"
+    else:
+        head = (
+            "画像はユーザーが書いた「と」です。靴下の画像と見た目の説明はまだありません。"
+            "靴下の色・柄・模様・モチーフなど具体的な見た目には一切触れず、字の特徴と、そこから想像される靴下の雰囲気"
+            "（素材感や履き心地のたとえなど）だけで説明してください。\n"
+        )
     return (
-        "1枚目がユーザーが書いた「と」、2枚目が選ばれた靴下です（靴下の画像が無い場合は説明のみ）。\n"
+        head
         + json.dumps(data, ensure_ascii=False)
         + "\nなぜこの靴下になったのかを説明するコメントを書いてください。"
     )

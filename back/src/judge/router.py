@@ -69,6 +69,7 @@ async def judge_full(req: JudgeRequest) -> JudgeResponse:
             judge_reason=j.impression_reason,
             feature_text=a.axes.reasons.get(d["impression"], []),
             description=catalog.description(sid),
+            has_image=catalog.image_path(sid) is not None,
         ))
     t3 = time.perf_counter()
 
