@@ -4,14 +4,20 @@
   python ml/tools/fetch_labels_r2.py
   python ml/tools/export_dataset.py --labels ml/data/labels/r2-latest.json
 
-R2 の鍵（アクセスキー）の渡し方（どちらか）:
-1. ml/r2.env というファイルを作り、次の 3〜4 行を書く（Git には入らない。.gitignore 済み）
-     R2_ACCOUNT_ID=<Cloudflare のアカウント ID（32 文字の英数字）>
+R2 の鍵の渡し方: ml/r2.env というファイルに書く（Git には入らない。.gitignore 済み）か、同じ名前の環境変数にする。
+もらったものによって、次のどちらか。
+
+A. Cloudflare の API トークン（curl ... -H "Authorization: Bearer <トークン>" の形でもらったとき）
+     R2_API_TOKEN=<Bearer のあとの文字列>
+     R2_ACCOUNT_ID=<Cloudflare のアカウント ID（32 文字の英数字）>   # わからなければ書かない（自動で探す）
+   トークンから R2 の鍵の組を作る（Cloudflare の決まり: アクセスキー ID ＝ トークンの ID、
+   シークレット ＝ トークンの SHA-256）。トークンに R2 を読む権限が要る。
+B. R2 の鍵の組（アクセスキー ID とシークレットアクセスキー）でもらったとき
+     R2_ACCOUNT_ID=<アカウント ID>
      R2_ACCESS_KEY_ID=<アクセスキー ID>
      R2_SECRET_ACCESS_KEY=<シークレットアクセスキー>
-     R2_BUCKET=ito-drawing        # 省略すると ito-drawing
-   アカウント ID の代わりに、R2_ENDPOINT=https://<アカウントID>.r2.cloudflarestorage.com でもよい。
-2. 同じ名前の環境変数にする
+どちらも、R2_BUCKET（省略すると ito-drawing）と、アカウント ID の代わりの
+R2_ENDPOINT=https://<アカウントID>.r2.cloudflarestorage.com が使える。
 
 置き場（back/src/labeling.py が書く）:
   labels/<label_set>/raters.json      {"raters": {キー: 名前}}
@@ -22,9 +28,12 @@ R2 の鍵（アクセスキー）の渡し方（どちらか）:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
+import urllib.error
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -43,16 +52,52 @@ def read_settings() -> dict[str, str]:
             if "=" in line:
                 key, value = line.split("=", 1)
                 settings[key.strip()] = value.strip().strip('"').strip("'")
-    for key in ("R2_ACCOUNT_ID", "R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"):
+    for key in ("R2_API_TOKEN", "R2_ACCOUNT_ID", "R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
+                "R2_BUCKET"):
         if os.environ.get(key):
             settings[key] = os.environ[key]
     settings.setdefault("R2_BUCKET", "ito-drawing")
+    token = settings.get("R2_API_TOKEN")
+    if token and not settings.get("R2_ACCESS_KEY_ID"):
+        settings.update(keys_from_token(token))
+        if not settings.get("R2_ENDPOINT") and not settings.get("R2_ACCOUNT_ID"):
+            settings["R2_ACCOUNT_ID"] = find_account_id(token)
     if not settings.get("R2_ENDPOINT") and settings.get("R2_ACCOUNT_ID"):
         settings["R2_ENDPOINT"] = f"https://{settings['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com"
     missing = [k for k in ("R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY") if not settings.get(k)]
     if missing:
         raise SystemExit(f"R2 の設定が足りません: {', '.join(missing)}（{ENV_FILE} に書く。使い方はこのファイルの先頭）")
     return settings
+
+
+def _cloudflare_api(path: str, token: str) -> dict:
+    request = urllib.request.Request(f"https://api.cloudflare.com/client/v4/{path}",
+                                     headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return json.loads(response.read())
+    except urllib.error.HTTPError as error:
+        body = json.loads(error.read() or b"{}")
+        messages = "; ".join(e.get("message", "") for e in body.get("errors", []))
+        raise SystemExit(f"Cloudflare の API がエラーを返しました（{error.code}: {messages}）。"
+                         "トークンの写し間違い（前後の空白など）か、期限切れ・取り消しを確かめる") from None
+
+
+def keys_from_token(token: str) -> dict[str, str]:
+    """API トークンから、R2（S3 の形の API）の鍵の組を作る"""
+    result = _cloudflare_api("user/tokens/verify", token)["result"]
+    if result.get("status") != "active":
+        raise SystemExit(f"トークンが使えない状態です（{result.get('status')}）")
+    return {"R2_ACCESS_KEY_ID": result["id"], "R2_SECRET_ACCESS_KEY": hashlib.sha256(token.encode()).hexdigest()}
+
+
+def find_account_id(token: str) -> str:
+    """トークンで見えるアカウントが 1 つなら、その ID"""
+    accounts = _cloudflare_api("accounts", token).get("result") or []
+    if len(accounts) == 1:
+        return accounts[0]["id"]
+    raise SystemExit("アカウント ID がわかりません。R2_ACCOUNT_ID を ml/r2.env に書く"
+                     "（インフラ担当に聞くか、Cloudflare の画面の R2 の概要ページの右側にある）")
 
 
 def to_export(label_set: str, raters: dict[str, str], files: dict[str, dict]) -> dict:

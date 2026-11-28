@@ -101,3 +101,15 @@ def test_r2_labels_become_export_format():
     out = fetch_labels_r2.to_export("v1", raters, files)
     assert out["label_set"] == "v1"
     assert [(r["item_id"], r["rater"], r["label"]) for r in out["labels"]] == [("b", "すずき", "teinei"), ("a", "さとう", "kawaii")]
+
+
+def test_r2_keys_from_api_token(monkeypatch):
+    import hashlib
+
+    import fetch_labels_r2
+
+    monkeypatch.setattr(fetch_labels_r2, "_cloudflare_api",
+                        lambda path, token: {"result": {"id": "abc123", "status": "active"}})
+    keys = fetch_labels_r2.keys_from_token("secret-token")
+    assert keys == {"R2_ACCESS_KEY_ID": "abc123",
+                    "R2_SECRET_ACCESS_KEY": hashlib.sha256(b"secret-token").hexdigest()}

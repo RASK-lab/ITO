@@ -61,17 +61,28 @@ python ml/tools/dedupe.py              # 同じ画像を除く（28 枚）
 
 ## 4. R2 の鍵を置く（初回だけ）
 
-もらった鍵を、`ml/r2.env` というファイルに書く（`nano ml/r2.env` などで作る）。
+もらった鍵を、`ml/r2.env` というファイルに書く（`nano ml/r2.env` などで作る）。もらった形で書き方が違う。
+
+**A. `curl ... -H "Authorization: Bearer <長い文字列>"` の形でもらったとき**（Cloudflare の API トークン）
+
+```
+R2_API_TOKEN=<Bearer のあとの長い文字列だけ>
+R2_ACCOUNT_ID=<Cloudflare のアカウント ID。わからなければこの行は書かない>
+```
+
+- `Bearer ` と、前後の `"` は入れない。
+- このトークンから、R2 の鍵の組を自動で作る。トークンに R2 を読む権限が付いている必要がある。
+
+**B. アクセスキー ID とシークレットアクセスキーの組でもらったとき**
 
 ```
 R2_ACCOUNT_ID=<Cloudflare のアカウント ID>
 R2_ACCESS_KEY_ID=<アクセスキー ID>
 R2_SECRET_ACCESS_KEY=<シークレットアクセスキー>
-R2_BUCKET=ito-drawing
 ```
 
-- もらった情報に「S3 API のエンドポイント」（`https://〜.r2.cloudflarestorage.com`）があれば、
-  `R2_ACCOUNT_ID` の代わりに `R2_ENDPOINT=<そのアドレス>` と書いてもよい。
+共通:
+- バケットは `ito-drawing`（違うなら `R2_BUCKET=<名前>` を足す）。
 - **鍵はパスワードと同じ**。チャット・Git・画面の共有に出さない。`ml/r2.env` は Git に入らない設定にしてある。
 - 他人も使うサーバーなら `chmod 600 ml/r2.env`（自分だけ読めるようにする）。
 
@@ -121,5 +132,7 @@ python ml/tools/train.py predict ml/runs/<日時>-fit-<モデル>/model.onnx 画
 | `CUDA out of memory` | `--batch 32` などに減らす |
 | `R2 の設定が足りません` | `ml/r2.env` の名前・場所を確かめる（`ml/` の中） |
 | `AccessDenied`・`SignatureDoesNotMatch` | 鍵の写し間違い（前後の空白など）か、鍵に `ito-drawing` を読む権限がない |
+| `Cloudflare の API がエラーを返しました` | トークンの写し間違いか、期限切れ。`Bearer ` まで写していないか |
+| `アカウント ID がわかりません` | `R2_ACCOUNT_ID=` をインフラ担当に聞いて書く |
 | `書き出したデータがありません` | 5 をやる |
 | `学習に使える行がありません` | ラベルがまだ無い（または全部「どれとも言えない」など） |
