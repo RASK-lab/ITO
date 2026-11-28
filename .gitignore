@@ -21,6 +21,9 @@ __pycache__/
 !.env.example
 !.dev.vars.example
 
+# Local data written by the backend
+back/data/
+
 # Logs
 *.log
 
@@ -31,7 +34,7 @@ Thumbs.db
 # ===== Claude Code =====
 .claude/settings.local.json
 .claude/
-docs
+docs/local/
 .ai/
 CLAUDE.md
 AGENTS.md
