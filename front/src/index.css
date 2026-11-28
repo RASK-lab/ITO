@@ -214,4 +214,220 @@ dialog.share::backdrop {
   .share-buttons h2 {
     text-align: left;
   }
+/* 靴下図鑑（body の grid/place-items を上書きして全幅に広げる） */
+.collection-page {
+  width: 100vw;
+  min-height: 100dvh;
+  background: #1a1f35;
+  color: #f2e8d5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.collection-header {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+}
+
+.collection-title {
+  font-size: 2rem;
+  color: #c9a84c;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.collection-subtitle {
+  color: #a09080;
+  font-size: 0.9rem;
+}
+
+.back-btn {
+  background: none;
+  border: 1px solid #c9a84c;
+  color: #c9a84c;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.collection-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+}
+
+.filter-btn {
+  background: none;
+  border: 1px solid #4a4060;
+  color: #c0b090;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.filter-btn.active {
+  background: #c9a84c;
+  border-color: #c9a84c;
+  color: #1a1f35;
+  font-weight: bold;
+}
+
+.sock-card {
+  background: #252035;
+  border: 2px solid;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s;
+  display: flex;
+  flex-direction: column;
+}
+
+.sock-card:hover {
+  transform: translateY(-3px);
+}
+
+.sock-card-image img {
+  width: 100%;
+  max-height: 180px;
+  aspect-ratio: 1;
+  object-fit: contain;
+  display: block;
+  background: #1a1a2a;
+}
+
+.sock-card-info {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.sock-rarity-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  color: #fff;
+  align-self: flex-start;
+}
+
+.sock-name {
+  font-size: 0.95rem;
+  font-weight: bold;
+  color: #f2e8d5;
+  margin: 0;
+}
+
+.sock-beauty {
+  font-size: 0.75rem;
+  color: #c9a84c;
+  margin: 0;
+}
+
+.sock-tag {
+  font-size: 0.75rem;
+  background: #3a3050;
+  color: #c0b090;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+.sock-tag.special {
+  background: #3a2050;
+  color: #e090cc;
+}
+
+.sock-comment {
+  font-size: 0.78rem;
+  color: #a09080;
+  margin: 0.25rem 0 0;
+  line-height: 1.5;
+}
+
+/* 靴下詳細モーダル */
+.sock-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: #00000099;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.sock-modal {
+  background: #252035;
+  border: 2px solid #c9a84c;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 480px;
+  width: 90%;
+  position: relative;
+  display: flex;
+  gap: 1.5rem;
+  color: #f2e8d5;
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: #a09080;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.modal-image {
+  width: 140px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.modal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.modal-name {
+  font-size: 1.1rem;
+  color: #c9a84c;
+  margin: 0.25rem 0 0;
+}
+
+.modal-id {
+  font-size: 0.75rem;
+  color: #6a6060;
+  margin: 0;
+}
+
+.modal-comment {
+  font-size: 0.85rem;
+  color: #a09080;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.modal-detail {
+  font-size: 0.85rem;
+  margin: 0;
+  color: #c0b090;
+}
+
+.modal-reason {
+  font-size: 0.8rem;
+  color: #8090a0;
+  font-style: italic;
+  margin: 0;
 }
