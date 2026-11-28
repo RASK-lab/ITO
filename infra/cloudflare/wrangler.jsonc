@@ -17,7 +17,7 @@
       "class_name": "Backend",
       "image": "../docker/back.Dockerfile",
       "image_build_context": "../../back",
-      "instance_type": "lite",
+      "instance_type": "basic",
       "max_instances": 1
     }
   ],
@@ -37,6 +37,23 @@
       "storage": "sqlite"
     }
   },
+
+  "r2_buckets": [
+    {
+      "binding": "DRAWINGS",
+      "bucket_name": "ito-drawing"
+    }
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ito-db",
+      "database_id": "5b7b72e9-69ee-4a6b-bfb6-98c7327b1658",
+      "migrations_dir": "migrations"
+    }
+  ],
+
 
   "observability": {
     "enabled": true

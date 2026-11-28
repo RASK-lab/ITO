@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+# 同じ PR に続けて push したら、古い実行を止めて新しい方だけ動かす
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+
+      - name: Lint and build
+        working-directory: front
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
+  worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            front/package-lock.json
+            infra/cloudflare/package-lock.json
+
+      # wrangler.jsonc の assets.directory（front/dist）が必要なので、先にビルドする
+      - name: Build frontend
+        working-directory: front
+        run: |
+          npm ci
+          npm run build
+
+      - name: Check Worker config
+        working-directory: infra/cloudflare
+        run: |
+          npm ci
+          npx wrangler deploy --dry-run --outdir /tmp/wrangler-out

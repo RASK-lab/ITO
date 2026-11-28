@@ -56,6 +56,10 @@ docker compose logs -f
 docker compose down
 ```
 
+## ドキュメント
+
+開発の前提、API、Git の決まり、仕様書は [docs/](docs/README.md) にまとめています。
+
 ## 開発ルール
 
 - mainブランチから機能ごとのブランチを作成する。
