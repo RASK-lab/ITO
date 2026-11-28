@@ -1,17 +1,19 @@
-"""Claude 呼び出し。①ブラインド判読と②AI講評（美しさの採点と講評）を並列に実行する。"""
+"""Claude 呼び出し。AI① 判定と AI② コメント。"""
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import logging
+import mimetypes
+from pathlib import Path
 
 import anthropic
 from anthropic import AsyncAnthropic
 
 from ..settings import settings
-from .prompts import BLIND_SYSTEM, REVIEW_SYSTEM, review_user_text
-from .schemas import BlindRead, Critique
+from . import usage
+from .prompts import COMMENT_SYSTEM, DESCRIBE_SYSTEM, JUDGE_SYSTEM
+from .schemas import SockComment, SockDescription, ToJudgement
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +22,7 @@ _client: AsyncAnthropic | None = None
 
 def get_client() -> AsyncAnthropic | None:
     global _client
-    if not settings.llm_enabled:
+    if not settings.llm_enabled or not usage.allow():
         return None
     if _client is None:
         _client = AsyncAnthropic(
@@ -32,72 +34,62 @@ def get_client() -> AsyncAnthropic | None:
     return _client
 
 
-def image_block(png: bytes) -> dict:
-    return {
-        "type": "image",
-        "source": {"type": "base64", "media_type": "image/png", "data": base64.standard_b64encode(png).decode()},
-    }
+def image_block(data: bytes, media_type: str = "image/png") -> dict:
+    return {"type": "image", "source": {"type": "base64", "media_type": media_type,
+                                        "data": base64.standard_b64encode(data).decode()}}
 
 
-async def blind_read(plain_png: bytes) -> BlindRead | None:
+def file_image_block(path: Path) -> dict:
+    mt = mimetypes.guess_type(path.name)[0] or "image/png"
+    return image_block(path.read_bytes(), mt)
+
+
+async def _parse(system: str, content: list[dict], output_format, model: str | None = None):
     client = get_client()
     if client is None:
         return None
-    res = await client.messages.parse(
-        model=settings.llm_model,
-        max_tokens=4000,
-        output_config={"effort": "low"},
-        system=BLIND_SYSTEM,
-        messages=[{
-            "role": "user",
-            "content": [image_block(plain_png), {"type": "text", "text": "この手書き文字を判読し、印象を評価してください。"}],
-        }],
-        output_format=BlindRead,
-    )
+    try:
+        res = await client.messages.parse(
+            model=model or settings.llm_model,
+            max_tokens=4000,
+            output_config={"effort": "low"},
+            system=system,
+            messages=[{"role": "user", "content": content}],
+            output_format=output_format,
+        )
+    except anthropic.APIError as e:
+        log.warning("LLM API error: %s", e)
+        return None
+    except Exception:  # noqa: BLE001 - デモを止めない
+        log.exception("LLM call failed")
+        return None
+    usage.record()
     if res.stop_reason != "end_turn":
-        log.warning("blind_read stop_reason=%s", res.stop_reason)
+        log.warning("stop_reason=%s", res.stop_reason)
         return None
     return res.parsed_output
 
 
-async def critique(numbered_png: bytes, target: str, intent: str, geometry_json: str) -> Critique | None:
-    client = get_client()
-    if client is None:
-        return None
-    res = await client.messages.parse(
-        model=settings.llm_model,
-        max_tokens=4000,
-        output_config={"effort": "low"},
-        system=REVIEW_SYSTEM,
-        messages=[{
-            "role": "user",
-            "content": [image_block(numbered_png), {"type": "text", "text": review_user_text(target, intent, geometry_json)}],
-        }],
-        output_format=Critique,
-    )
-    if res.stop_reason != "end_turn":
-        log.warning("critique stop_reason=%s", res.stop_reason)
-        return None
-    return res.parsed_output
+async def judge(to_png: bytes, quantitative_json: str) -> ToJudgement | None:
+    """AI① 判定。"""
+    return await _parse(JUDGE_SYSTEM, [
+        image_block(to_png),
+        {"type": "text", "text": "筆跡解析エンジンの定量データ:\n" + quantitative_json},
+    ], ToJudgement)
 
 
-async def judge_llm(
-    plain_png: bytes, numbered_png: bytes, target: str, intent: str, geometry_json: str
-) -> tuple[BlindRead | None, Critique | None]:
-    """両方を並列に呼ぶ。失敗した側は None（幾何スコアだけで続行できるように）。"""
-    results = await asyncio.gather(
-        blind_read(plain_png),
-        critique(numbered_png, target, intent, geometry_json),
-        return_exceptions=True,
-    )
-    out = []
-    for r in results:
-        if isinstance(r, anthropic.APIError):
-            log.warning("LLM API error: %s", r)
-            out.append(None)
-        elif isinstance(r, BaseException):
-            log.exception("LLM call failed", exc_info=r)
-            out.append(None)
-        else:
-            out.append(r)
-    return out[0], out[1]
+async def comment(to_png: bytes, sock_image: Path | None, user_text: str) -> SockComment | None:
+    """AI② コメント。靴下の画像があれば一緒に渡す。"""
+    content = [image_block(to_png)]
+    if sock_image is not None:
+        content.append(file_image_block(sock_image))
+    content.append({"type": "text", "text": user_text})
+    return await _parse(COMMENT_SYSTEM, content, SockComment, model=settings.comment_model)
+
+
+async def describe_sock(sock_image: Path) -> SockDescription | None:
+    """靴下画像の見た目の説明（事前生成用）。"""
+    return await _parse(DESCRIBE_SYSTEM, [
+        file_image_block(sock_image),
+        {"type": "text", "text": "この靴下の見た目を説明してください。"},
+    ], SockDescription)

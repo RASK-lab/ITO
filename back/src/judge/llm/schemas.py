@@ -6,35 +6,32 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-Candidate = Literal["十", "都", "戸", "徒", "ト", "と", "土", "寸", "卜", "ど", "こ", "ラ", "その他"]
+Impression = Literal["koseiteki", "zatsu", "kawaii", "teinei", "kakkoii",
+                     "sensai", "tappitsu", "bukiyou", "atatakai", "tsumetai"]
 
 
-class ImpressionAxes(BaseModel):
-    chikarazuyosa: int  # 力強さ 0-10
-    yasashisa: int      # やさしさ
-    teinei: int         # 丁寧さ
-    genki: int          # 元気
-    yuuga: int          # 優雅
-
-
-class BlindRead(BaseModel):
-    read_as: Candidate
-    confidence: int          # 0-100
-    impressions: list[str]   # 3語
-    axes: ImpressionAxes
-
-
-class Correction(BaseModel):
-    stroke: int              # 1始まりの画番号
-    kind: Literal["shape", "balance", "ending", "order", "line"]
-    issue: str
-
-
-class Critique(BaseModel):
-    balance: int             # 1-10
+class ToJudgement(BaseModel):
+    """AI① 判定。ユーザーには見せない。"""
+    is_to: bool                 # ひらがなの「と」に見えるか
+    is_to_confidence: int       # 0-100
+    impression: Impression      # 候補3つの中から1つ
+    impression_reason: str      # 判断理由（どの特徴が決め手か）
+    balance: int                # 美しさ 1-10
     line_quality: int
     endings: int
     overall: int
-    good_point: str
-    comment: str             # 120字以内
-    corrections: list[Correction]
+
+
+class SockComment(BaseModel):
+    """AI② コメント。ユーザーに表示する。"""
+    comment: str
+
+
+class SockDescription(BaseModel):
+    """靴下画像の見た目の説明（事前生成）。"""
+    colors: list[str]
+    pattern: str
+    material_look: str
+    condition: str
+    motifs: list[str]
+    overall: str

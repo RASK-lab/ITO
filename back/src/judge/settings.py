@@ -29,6 +29,10 @@ class Settings:
     # AI Gateway を使う場合: https://gateway.ai.cloudflare.com/v1/<ACCOUNT_ID>/<GATEWAY_ID>/anthropic
     anthropic_base_url: str | None = os.environ.get("ANTHROPIC_BASE_URL") or None
     llm_model: str = os.environ.get("LLM_MODEL", "claude-haiku-5-5")
+    # AI② コメントだけ別モデルにする場合（未設定なら llm_model）
+    comment_model: str = os.environ.get("COMMENT_MODEL") or os.environ.get("LLM_MODEL", "claude-haiku-5-5")
+    # 1日あたりの Claude 呼び出し回数の上限（超えたら AI なしで返す）
+    llm_daily_limit: int = int(os.environ.get("LLM_DAILY_LIMIT", "3000"))
     llm_timeout_s: float = float(os.environ.get("LLM_TIMEOUT_S", "15"))
     dev: bool = os.environ.get("DEV", "0") == "1"
 
