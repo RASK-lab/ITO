@@ -101,14 +101,17 @@ data = json.loads(gzip.decompress(open("<id>.json.gz", "rb").read()))
 | `duration_ms` | 整数 | 書くのにかかった時間（ミリ秒）。最初の線を書きはじめてから、最後の線を離すまで。バックエンドが、最後の線の最後の点の `t` を入れる |
 | `stroke_count` | 整数 | 線の本数。バックエンドが数える |
 | `point_count` | 整数 | 点の合計。バックエンドが数える |
-| `sock_id` | 文字 | 分析で選ばれたくつした。分析前は空 |
+| `sock_id` | 文字 | 結果のくつしたの ID（例 `WORN-01`）。いまは仮の結果（50 種から無作為に選んだもの）が入る。分析ができたら、分析で選んだくつしたが入る |
 | `font` | 文字 | 似ているフォント。分析前は空 |
 | `reading` | 文字 | 「と」についての読み解き。分析前は空 |
-| `message` | 文字 | くつしたと絡めたメッセージ。分析前は空 |
-| `user_name` | 文字 | 一覧に出す名前。載せない場合は空 |
+| `message` | 文字 | くつしたと絡めたメッセージ。いまは仮の結果（決まった文に、くつしたの名前を入れた一行）が入る |
+| `user_name` | 文字 | 書いた人のユーザーネーム。確定のときに、最初の画面で入れた名前が入る。入れなかったときは `User`。15 文字まで。同じ名前の行がいくつあってもよい |
 | `is_public` | 整数 | 一覧に載せてよいなら 1。既定は 0 |
 
-`sock_id` から下の 6 列は、分析と一覧の機能ができてから使います。いまは列だけ用意してあり、値は入れていません（`sock_id`〜`user_name` は空、`is_public` は 0）。
+- `user_name` は、確定のときに入ります。
+- `sock_id` と `message` には、仮の結果が入ります。分析ができるまでの代わりで、書かれた「と」とは関係なく決めた値です（作っているのは `back/src/drawings.py` の `make_result`。[api.md](api.md) の「仮の結果」）。仮の結果が入った行と、あとで分析の結果が入る行は、台帳の上では区別できません。
+- `font`、`reading`、`is_public` は、分析と一覧の機能ができてから使います。いまは列だけ用意してあり、値は入れていません（`font` と `reading` は空、`is_public` は 0）。
+- `user_name`、`sock_id`、`message` を入れるようになる前の行では、この 3 列は空です。
 
 表は、最初の確定のときに自動で作られます（`back/src/db.py` の `SCHEMA`）。列を変えるときは、手元の `ito.sqlite3` を消してから作り直してください（作り直すと、手元の記録は消えます）。
 
@@ -116,10 +119,11 @@ data = json.loads(gzip.decompress(open("<id>.json.gz", "rb").read()))
 
 ### 書く順番と、失敗したとき
 
-1. 画像 2 枚と線のデータを、オブジェクト置き場に置く。
-2. 台帳に 1 行書く。
+1. 仮の結果（くつしたとメッセージ）を作る。ここでは何も置かない。
+2. 画像 2 枚と線のデータを、オブジェクト置き場に置く。
+3. 台帳に 1 行書く。
 
-途中で失敗したら、置いたオブジェクトを消して、API は 500 を返します。台帳に行があるのにオブジェクトがない、という状態は作りません。同時に確定が来たときは、台帳への書き込みを 1 つずつ順番に行います。
+1 で失敗したら（くつしたの台帳が読めないとき）、何も置かずに、API は 500 を返します。2 と 3 の途中で失敗したら、置いたオブジェクトを消して、API は 500 を返します。台帳に行があるのにオブジェクトがない、という状態は作りません。同時に確定が来たときは、台帳への書き込みを 1 つずつ順番に行います。
 
 ### 中身を見る
 
@@ -127,7 +131,7 @@ data = json.loads(gzip.decompress(open("<id>.json.gz", "rb").read()))
 
 ```bash
 # 台帳の新しい 10 行
-docker compose exec backend python -c "import sqlite3; [print(r) for r in sqlite3.connect('data/ito.sqlite3').execute('select id, created_at, target, duration_ms, stroke_count, point_count, image_1024_key, image_256_key, strokes_key from drawings order by created_at desc limit 10')]"
+docker compose exec backend python -c "import sqlite3; [print(r) for r in sqlite3.connect('data/ito.sqlite3').execute('select id, created_at, user_name, sock_id, message, target, duration_ms, stroke_count, point_count, image_1024_key, image_256_key, strokes_key from drawings order by created_at desc limit 10')]"
 
 # オブジェクトの一覧
 docker compose exec backend ls -l data/objects/drawings
