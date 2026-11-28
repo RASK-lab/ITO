@@ -65,6 +65,13 @@ const LINE_WIDTH_RATIO = 0.02;
  */
 const STROKE_OPTIONS = { thinning: 0.6, smoothing: 0.5, streamline: 0.5 };
 /**
+ * ペンの筆圧をならす時間（ミリ秒）。大きいほど太さの変化がなめらかになるが、
+ * 筆圧を変えてから太さが追いつくまでが遅くなる。
+ */
+const PEN_PRESSURE_SMOOTHING_MS = 80;
+/** ならすときに、点 1 個が進めたとみなす最短の時間（ミリ秒） */
+const MIN_PRESSURE_STEP_MS = 4;
+/**
  * 覚える位置の範囲。枠の外へ出た線は、枠の一辺ぶん外側で止める
  * （記録する座標では -1024〜2048。API の受け入れ範囲と同じ）。
  */
@@ -130,6 +137,34 @@ function countPoints(strokes: Stroke[]) {
 }
 
 /**
+ * ペンの筆圧を、描くためにならす。
+ *
+ * ペン（Apple Pencil など）で速く書くと、端末が報告する筆圧が、画面の更新 1 回ごとに
+ * 上下することがある（1 回の更新でまとめて届く点のうち、新しい点の筆圧が見込みの値で
+ * 届くためとみられる）。そのまま太さにすると、線が数珠つなぎのようにくびれる。
+ * 手で変える筆圧は、画面の更新（約 17 ミリ秒）よりずっとゆっくり動くので、
+ * PEN_PRESSURE_SMOOTHING_MS の時間でならして、細かい上下だけを消す。
+ *
+ * ならすのは描く太さだけ。記録する筆圧（toRecordedPoint）は、端末が報告した値のまま。
+ */
+function smoothPenPressures(points: Point[]) {
+  // 筆圧 0 は「測れなかった」とみなして使わない（最初の値は、0 でない最初の筆圧）
+  let value = points.find((p) => p.pressure > 0)?.pressure ?? 0.5;
+  let previousT = points[0].t;
+  return points.map((p) => {
+    // まとめて届いた点は、時刻が同じことがある。その場合も少しずつ近づける。
+    const elapsed = Math.max(MIN_PRESSURE_STEP_MS, p.t - previousT);
+    previousT = p.t;
+    if (p.pressure > 0) {
+      value +=
+        (p.pressure - value) *
+        (1 - Math.exp(-elapsed / PEN_PRESSURE_SMOOTHING_MS));
+    }
+    return value;
+  });
+}
+
+/**
  * 1 本の線の形（ふちをなぞった、塗りつぶす形）を作る。太さは筆圧で変える。
  * ペンは、端末が報告した筆圧を使う。マウスと指は筆圧を測れないので、書く速さから作る
  * （ゆっくりは太く、速いと細い）。記録する筆圧（toRecordedPoint）は、ここでは変えない。
@@ -137,12 +172,19 @@ function countPoints(strokes: Stroke[]) {
  * @param finished 書き終えた線なら true。書いている途中の線は、終わりの形がまだ決まらない。
  */
 function toPath(stroke: Stroke, size: number, finished: boolean) {
+  const pen = stroke.pointerType === "pen";
+  // ペンの筆圧は、ならしてから使う（理由は smoothPenPressures を参照）
+  const pressures = pen ? smoothPenPressures(stroke.points) : null;
   const outline = getStroke(
-    stroke.points.map((p) => [p.x * size, p.y * size, p.pressure]),
+    stroke.points.map((p, i) => [
+      p.x * size,
+      p.y * size,
+      pressures ? pressures[i] : p.pressure,
+    ]),
     {
       ...STROKE_OPTIONS,
       size: size * LINE_WIDTH_RATIO,
-      simulatePressure: stroke.pointerType !== "pen",
+      simulatePressure: !pen,
       last: finished,
     },
   );
