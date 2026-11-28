@@ -24,8 +24,9 @@ REFS_DIR = Path(__file__).resolve().parent.parent / "refs"
 VIEWBOX = 109.0
 SAMPLES = 64
 
-# お題の「と」6字
-TARGETS = ["十", "都", "戸", "徒", "ト", "と"]
+
+# 判定対象の「と」と、「と」ではない判定に使う形の近い字
+TARGETS = ["と", "ト", "こ", "し", "て"]
 
 SVG_NS = "{http://www.w3.org/2000/svg}"
 KVG_TYPE = "{http://kanjivg.tagaini.net}type"

@@ -11,7 +11,10 @@ import yaml
 
 REFS_DIR = Path(__file__).resolve().parent
 
-TARGET_CHARS = ("十", "都", "戸", "徒", "ト", "と")
+TARGET = "と"
+# 「と」ではない判定に使う、形の近い字
+DISTRACTORS = ("ト", "こ", "し", "て")
+TARGET_CHARS = (TARGET,) + DISTRACTORS
 
 
 class Reference:
