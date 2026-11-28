@@ -1,17 +1,22 @@
-# Node.js
+# ===== Node.js =====
 node_modules/
 dist/
+*.tsbuildinfo
+npm-debug.log*
 
-# Python
+# ===== Python =====
 __pycache__/
-*.pyc
+*.py[cod]
 .venv/
+venv/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
-# Cloudflare
+# ===== Cloudflare =====
 .wrangler/
 
-# Environment variables
+# ===== Environment variables =====
 .env
 .env.*
 .dev.vars
@@ -21,17 +26,22 @@ __pycache__/
 !.env.example
 !.dev.vars.example
 
-# Logs
+# ===== Local data written by the backend =====
+back/data/
+
+# ===== Logs =====
 *.log
 
-# OS
+# ===== OS =====
 .DS_Store
 Thumbs.db
 
-# ===== Claude Code =====
-.claude/settings.local.json
+# ===== Temporary files =====
+infra/dir.txt
+
+# ===== Claude Code / AI =====
 .claude/
-docs
+docs/local/
 .ai/
 CLAUDE.md
 AGENTS.md
