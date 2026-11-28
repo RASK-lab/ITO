@@ -19,7 +19,8 @@ BUSY_TIMEOUT_SECONDS = 10
 # 重なったときに、一部だけが長く待たされることがあるため。
 _WRITE_LOCK = threading.Lock()
 
-# sock_id、font、reading、message、is_public は、分析と一覧の機能ができてから使う
+# sock_id と message には、いまは仮の結果（back/src/drawings.py の make_result）が入る。
+# font、reading、is_public は、分析と一覧の機能ができてから使う。
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS drawings (
     id             TEXT PRIMARY KEY,
@@ -51,6 +52,8 @@ _DRAWING_COLUMNS = (
     "duration_ms",
     "stroke_count",
     "point_count",
+    "sock_id",
+    "message",
     "user_name",
 )
 
@@ -68,7 +71,7 @@ def _connect() -> sqlite3.Connection:
 
 
 def insert_drawing(record: dict) -> None:
-    """書かれた「と」を 1 行足す。分析結果の列は、分析ができてから埋める。"""
+    """書かれた「と」を 1 行足す。font、reading、is_public は、まだ入れない。"""
     columns = ", ".join(_DRAWING_COLUMNS)
     placeholders = ", ".join(f":{column}" for column in _DRAWING_COLUMNS)
     with _WRITE_LOCK, closing(_connect()) as connection, connection:

@@ -1,7 +1,9 @@
-"""書いた「と」を受け取り、画像を整えて記録する。
+"""書いた「と」を受け取り、画像を整えて記録し、結果（くつしたとメッセージ）を返す。
 
 置き場所は storage.py（画像と線のデータ）と db.py（台帳）に任せる。
 記録の形は docs/data.md にある。
+
+結果は、分析ができるまでの仮のもの（下の make_result）。
 """
 
 import base64
@@ -9,6 +11,7 @@ import binascii
 import gzip
 import io
 import logging
+import random
 import struct
 import uuid
 from datetime import datetime, timezone
@@ -18,7 +21,7 @@ from fastapi import APIRouter, HTTPException
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt
 
-from src import db, storage
+from src import db, socks, storage
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +128,34 @@ class DrawingIn(StrokeData):
     height: int = Field(ge=MIN_IMAGE_SIZE, le=MAX_IMAGE_SIZE)
 
 
+class SockOut(BaseModel):
+    """結果として返すくつした。image は、フロントがそのまま <img src> に使えるパス。"""
+
+    id: str
+    name: str
+    image: str
+
+
 class DrawingOut(BaseModel):
     id: str
     created_at: str
+    # ここから下は結果。いまは仮のもの（make_result）。
+    sock: SockOut
+    message: str
+
+
+def make_result() -> tuple[SockOut, str]:
+    """【仮】結果（くつしたと、一行のメッセージ）を作る。
+
+    分析（深層学習）ができるまでの代わり。書かれた「と」は見ずに、くつしたを 50 種から
+    無作為に 1 つ選び、決まった文にくつしたの名前を入れる。
+    分析ができたら、この関数の中身を差し替える（書かれた「と」を引数で受け取り、
+    分析で選んだくつしたと、分析で作ったメッセージを返す）。返す形を変えなければ、
+    呼ぶ側で直すのは、引数を渡すところだけで済む。
+    """
+    sock = random.choice(socks.all_socks())
+    message = f"あなたの「と」に、くつした「{sock['name']}」が届きました。"
+    return SockOut(id=sock["id"], name=sock["name"], image=sock["image"]), message
 
 
 def to_stroke_data(drawing: DrawingIn) -> bytes:
@@ -215,6 +243,14 @@ def create_drawing(drawing: DrawingIn) -> DrawingOut:
         # 壊れた PNG では、Pillow が OSError や SyntaxError など、いろいろな例外を出す
         raise HTTPException(422, "image を PNG として読めませんでした") from None
 
+    # 結果は、保存する前に作る。くつしたの台帳が読めないときは、何も保存せずに失敗にする
+    # （くつしたのない記録を残さない。返す形も、くつしたのない場合を作らずに済む）。
+    try:
+        sock, message = make_result()
+    except Exception:
+        logger.exception("結果を作れませんでした（くつしたの台帳を読めない、など）")
+        raise HTTPException(500, "結果を作れませんでした") from None
+
     drawing_id = uuid.uuid4().hex
     created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     record = {
@@ -228,6 +264,8 @@ def create_drawing(drawing: DrawingIn) -> DrawingOut:
         "duration_ms": drawing.strokes[-1].points[-1][2],
         "stroke_count": len(drawing.strokes),
         "point_count": point_count,
+        "sock_id": sock.id,
+        "message": message,
         "user_name": user_name,
     }
     objects = {
@@ -250,4 +288,6 @@ def create_drawing(drawing: DrawingIn) -> DrawingOut:
             except Exception:
                 logger.exception("書きかけのデータを消せませんでした（キー: %s）", key)
         raise HTTPException(500, "記録を保存できませんでした") from None
-    return DrawingOut(id=drawing_id, created_at=created_at)
+    return DrawingOut(
+        id=drawing_id, created_at=created_at, sock=sock, message=message
+    )
