@@ -3,37 +3,25 @@ import { saveDrawing } from "../api/drawings";
 import type { SavedDrawing } from "../api/drawings";
 import { WritingCanvas } from "../components/WritingCanvas";
 import type { WritingCanvasHandle } from "../components/WritingCanvas";
+import { EnvelopeAnimation } from "../components/EnvelopeAnimation";
 import { displayUserName } from "../userName";
 import { ResultPage } from "./ResultPage";
 import { WaitingPage } from "./WaitingPage";
 
-/** 書ける量の上限に達している間、結果の表示がないときに出す案内 */
+type AnimPhase = "idle" | "glow" | "fold" | "envelope" | "fly" | "resolving";
+
 const FULL_MESSAGE =
   "これ以上は書けません。「1つ戻る」か「消去」で減らしてください。";
-
-/**
- * 待機中の画面を出しておく、いちばん短い時間（ミリ秒）。
- * いまは保存が一瞬（0.1 秒前後）で終わるので、そのまま切り替えると、待機中の画面が
- * 一瞬だけ出て消え、ちらついて見える。あとで分析の待ち時間が入る場所なので、
- * その代わりとして、この時間は必ず出しておく。失敗したときも同じだけ待つ。
- */
-const MIN_WAITING_MS = 1500;
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * 「と」を書く画面。「確定」のあとの待機中の画面と結果の画面も、この中で切り替える
- * （アドレスは変えない）。
- */
 export function WritePage() {
   const canvasRef = useRef<WritingCanvasHandle>(null);
   const [strokeCount, setStrokeCount] = useState(0);
   const [full, setFull] = useState(false);
-  /** 「確定」を押してから、結果か失敗が決まるまで true。その間は待機中の画面を出す。 */
-  const [sending, setSending] = useState(false);
-  /** 届いた結果と、そのとき書いた「と」の画像。あれば結果の画面を出す。 */
+  const [animPhase, setAnimPhase] = useState<AnimPhase>("idle");
   const [result, setResult] = useState<{
     saved: SavedDrawing;
     drawingImage: string;
@@ -41,6 +29,7 @@ export function WritePage() {
   const [message, setMessage] = useState("");
 
   const empty = strokeCount === 0;
+  const isAnimating = animPhase !== "idle";
 
   function handleCanvasChange(count: number, isFull: boolean) {
     setStrokeCount(count);
@@ -48,75 +37,138 @@ export function WritePage() {
     setMessage("");
   }
 
-  async function handleConfirm() {
+  async function handleSend() {
     const drawing = canvasRef.current?.exportDrawing();
     if (!drawing) return;
     setMessage("");
-    setSending(true);
-    // 保存が早く終わっても、失敗しても、MIN_WAITING_MS が過ぎるまでは待機中の画面のまま
-    const [saved] = await Promise.allSettled([
-      saveDrawing(drawing, displayUserName()),
-      wait(MIN_WAITING_MS),
-    ]);
-    if (saved.status === "fulfilled") {
-      setResult({ saved: saved.value, drawingImage: drawing.image });
+
+    // API 呼び出しをアニメーションと並列で開始
+    const apiPromise = saveDrawing(drawing, displayUserName()).catch((e) => {
+      console.error(e);
+      return null;
+    });
+
+    // Phase 1: Glow（文字が金色に輝く・2 秒）
+    setAnimPhase("glow");
+    const glowMs = 2000;
+    const glowStart = Date.now();
+    let rafId: number;
+    const animateInk = () => {
+      if (Date.now() - glowStart < glowMs) {
+        canvasRef.current?.redrawWithCurrentColor();
+        rafId = requestAnimationFrame(animateInk);
+      }
+    };
+    rafId = requestAnimationFrame(animateInk);
+    await wait(glowMs);
+    cancelAnimationFrame(rafId);
+
+    setAnimPhase("fold");
+    await wait(800);
+    setAnimPhase("envelope");
+    await wait(1000);
+    setAnimPhase("fly");
+    await wait(900);
+
+    // アニメーション終了後、API 完了を待つ（通常はすでに終わっている）
+    setAnimPhase("resolving");
+    const saved = await apiPromise;
+    setAnimPhase("idle");
+
+    if (saved) {
+      setResult({ saved, drawingImage: drawing.image });
     } else {
-      // 書く画面に戻す。書いた線は残っている。
-      console.error(saved.reason);
-      setMessage("記録できませんでした。もう一度「確定」を押してください。");
+      setMessage("記録できませんでした。もう一度「送る」を押してください。");
     }
-    setSending(false);
   }
 
-  /** 結果の画面の「もう一度」。枠を空にして、書く画面に戻す。 */
   function handleAgain() {
     canvasRef.current?.clear();
     setResult(null);
   }
 
+  const showLetter =
+    (animPhase === "idle" || animPhase === "glow" || animPhase === "fold") &&
+    result === null;
+  const showEnvelope = animPhase === "envelope" || animPhase === "fly";
+  const showWaiting = animPhase === "resolving";
+
   return (
     <>
-      {/*
-        待機中の画面と結果の画面を出している間も、書く画面は外さずに隠すだけにする。
-        外すと、枠が覚えている線が消え、失敗して戻ったときに書き直しになるため。
-      */}
-      <main hidden={sending || result !== null}>
-        <h1>「と」を書いてください</h1>
+      {/* 手紙ボード — DOM に残しておくことで canvas の線を保持 */}
+      <div
+        className="letter-scene"
+        style={{ display: showLetter ? "flex" : "none" }}
+        aria-hidden={!showLetter}
+      >
+        <div className="letter-with-seal">
+          <div
+            className={[
+              "letter-board",
+              animPhase === "glow" ? "phase-glow" : "",
+              animPhase === "fold" ? "phase-fold" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <p className="letter-to">To: {displayUserName()}</p>
 
-        <WritingCanvas
-          ref={canvasRef}
-          disabled={sending}
-          onChange={handleCanvasChange}
-        />
+            <div
+              className={`letter-canvas-area${animPhase === "glow" ? " glow" : ""}`}
+            >
+              <WritingCanvas
+                ref={canvasRef}
+                disabled={isAnimating}
+                onChange={handleCanvasChange}
+              />
+            </div>
 
-        <div className="actions">
+            <p className="letter-from">From: 糸</p>
+          </div>
+
+          <div className="wax-seal" aria-hidden="true">
+            <span className="wax-seal__glyph">糸</span>
+          </div>
+        </div>
+
+        <div className="letter-controls">
+          <div className="letter-actions-sub">
+            <button
+              type="button"
+              onClick={() => canvasRef.current?.clear()}
+              disabled={empty || isAnimating}
+              className="letter-btn-sub"
+            >
+              消去
+            </button>
+            <button
+              type="button"
+              onClick={() => canvasRef.current?.undo()}
+              disabled={empty || isAnimating}
+              className="letter-btn-sub"
+            >
+              1つ戻る
+            </button>
+          </div>
+
           <button
             type="button"
-            onClick={() => canvasRef.current?.clear()}
-            disabled={empty || sending}
+            onClick={handleSend}
+            disabled={empty || isAnimating}
+            className="letter-send-btn"
           >
-            消去
-          </button>
-          <button
-            type="button"
-            onClick={() => canvasRef.current?.undo()}
-            disabled={empty || sending}
-          >
-            1つ戻る
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={empty || sending}
-          >
-            確定
+            送る
           </button>
         </div>
 
         <p className="message" role="status">
           {message || (full ? FULL_MESSAGE : "")}
         </p>
-      </main>
+      </div>
+
+      {showEnvelope && (
+        <EnvelopeAnimation phase={animPhase as "envelope" | "fly"} />
+      )}
 
       {result !== null ? (
         <ResultPage
@@ -125,7 +177,7 @@ export function WritePage() {
           onAgain={handleAgain}
         />
       ) : (
-        sending && <WaitingPage />
+        showWaiting && <WaitingPage />
       )}
     </>
   );

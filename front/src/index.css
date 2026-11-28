@@ -2,7 +2,19 @@
 :root {
   font: 16px/1.6 system-ui, sans-serif;
   color: #222;
-  background: #fff;
+  /* アンティーク・リネンテーブル風の背景 */
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0px, transparent 7px,
+      rgba(0, 0, 0, 0.016) 7px, rgba(0, 0, 0, 0.016) 8px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0px, transparent 7px,
+      rgba(0, 0, 0, 0.016) 7px, rgba(0, 0, 0, 0.016) 8px
+    ),
+    linear-gradient(145deg, #d2c4a4 0%, #c4b490 50%, #ccc0a0 100%);
 }
 
 body {
@@ -214,6 +226,8 @@ dialog.share::backdrop {
   .share-buttons h2 {
     text-align: left;
   }
+}
+
 /* 靴下図鑑（body の grid/place-items を上書きして全幅に広げる） */
 .collection-page {
   width: 100vw;
@@ -430,4 +444,483 @@ dialog.share::backdrop {
   color: #8090a0;
   font-style: italic;
   margin: 0;
+}
+
+/* ============================================================
+   手紙レイアウト（WritePage — アンティーク手紙UI）
+   ============================================================ */
+
+.letter-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 0 1rem;
+}
+
+.letter-board {
+  position: relative;
+  width: min(100vw - 1rem, 580px);
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  /* アンティーク羊皮紙（明るいクリーム・アイボリー） */
+  background:
+    radial-gradient(ellipse 55% 35% at 18% 22%, rgba(120, 70, 20, 0.1) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 45% at 82% 68%, rgba(100, 60, 15, 0.07) 0%, transparent 65%),
+    radial-gradient(ellipse 45% 30% at 48% 82%, rgba(110, 65, 15, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 25% 20% at 68% 18%, rgba(90, 50, 10, 0.05) 0%, transparent 50%),
+    linear-gradient(165deg, #f7f0de 0%, #f0e6c8 25%, #f3ebd2 55%, #ede0c0 80%, #f5edd8 100%);
+
+  /* 破れた紙のエッジ */
+  clip-path: polygon(
+    0% 1.5%, 5% 0%, 10% 1%, 15% 0%, 20% 2%, 25% 0%, 30% 1%, 35% 0%,
+    40% 2%, 45% 0%, 50% 1%, 55% 0%, 60% 2%, 65% 0%, 70% 1%, 75% 0%,
+    80% 2%, 85% 0%, 90% 1%, 95% 0%, 100% 1.5%,
+    100% 98.5%,
+    95% 100%, 90% 99%, 85% 100%, 80% 99%, 75% 100%, 70% 99%,
+    65% 100%, 60% 99%, 55% 100%, 50% 99%, 45% 100%, 40% 99%,
+    35% 100%, 30% 99%, 25% 100%, 20% 99%, 15% 100%, 10% 99%, 5% 100%, 0% 98.5%
+  );
+
+  /* drop-shadow は clip-path の形に沿う */
+  filter: drop-shadow(4px 6px 14px rgba(0, 0, 0, 0.35))
+          drop-shadow(1px 2px 4px rgba(0, 0, 0, 0.2));
+
+  transform-origin: center top;
+}
+
+/* 手紙の内側に薄い装飾フレーム */
+.letter-board::after {
+  content: '';
+  position: absolute;
+  inset: 1rem;
+  border: 1px solid rgba(140, 90, 20, 0.18);
+  pointer-events: none;
+}
+
+/* "To: ユーザー名" */
+.letter-to {
+  margin: 0;
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.25rem;
+  color: #3a2010;
+  letter-spacing: 0.03em;
+  padding-left: 0.25rem;
+}
+
+/* キャンバスエリア */
+.letter-canvas-area {
+  position: relative;
+  width: 100%;
+}
+
+/* 羊皮紙の上に乗るキャンバス */
+.letter-canvas-area .writing-canvas {
+  background: transparent;
+  border: 1px dashed rgba(80, 45, 10, 0.18);
+  color: #150800;
+}
+
+/* 手紙＋封蝋シールのラッパー */
+.letter-with-seal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 40px; /* シールが下にはみ出す分 */
+}
+
+/* 封蝋シール */
+.wax-seal {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 30%, #f5d87a 0%, #d4a030 25%, #a86c18 55%, #7a4a08 85%, #5a3200 100%);
+  box-shadow:
+    0 8px 22px rgba(60, 30, 0, 0.55),
+    0 3px 8px rgba(60, 30, 0, 0.4),
+    inset 0 3px 8px rgba(255, 220, 80, 0.5),
+    inset 0 -4px 10px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+/* シールの外周リング */
+.wax-seal::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(70, 38, 4, 0.5);
+  box-shadow: inset 0 1px 4px rgba(255, 200, 50, 0.35);
+}
+
+/* シール中央の文字（糸） */
+.wax-seal__glyph {
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(42, 20, 2, 0.82);
+  text-shadow:
+    0 1px 2px rgba(220, 160, 20, 0.6),
+    0 -1px 1px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
+
+/* コントロールエリア（手紙の外・下） */
+.letter-controls {
+  width: min(100vw - 1rem, 580px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.letter-actions-sub {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.letter-btn-sub {
+  flex: 1;
+  height: 2rem;
+  font: inherit;
+  font-size: 0.8rem;
+  background: rgba(100, 60, 10, 0.18);
+  border: 1px solid rgba(100, 60, 10, 0.5);
+  border-radius: 3px;
+  color: #3a1e08;
+  cursor: pointer;
+}
+
+.letter-btn-sub:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 送るボタン（封蝋スタイル） */
+.letter-send-btn {
+  width: 100%;
+  height: 2.75rem;
+  font: inherit;
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.2rem;
+  letter-spacing: 0.1em;
+  background: linear-gradient(145deg, #b8922a, #7a5410);
+  border: none;
+  border-radius: 50px;
+  color: #fff8e8;
+  cursor: pointer;
+  box-shadow:
+    0 3px 8px rgba(100, 60, 10, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.letter-send-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 5px 12px rgba(100, 60, 10, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.letter-send-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* "From: 糸" */
+.letter-from {
+  margin: 0;
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.1rem;
+  color: #3a2010;
+  text-align: right;
+  padding-right: 0.25rem;
+}
+
+/* ============================================================
+   Phase 1: Glow（文字そのものが金色に輝く — アニメ的魔法演出）
+   ============================================================ */
+
+/* 手紙ボード全体が背後から金色の光を帯びる */
+@keyframes letter-board-glow {
+  0%   {
+    filter: drop-shadow(4px 6px 14px rgba(0,0,0,0.35))
+            drop-shadow(1px 2px 4px rgba(0,0,0,0.2));
+  }
+  25%  {
+    filter: drop-shadow(4px 6px 14px rgba(0,0,0,0.3))
+            drop-shadow(0 0 12px rgba(255,200,0,0.25));
+  }
+  55%  {
+    filter: drop-shadow(4px 6px 14px rgba(0,0,0,0.3))
+            drop-shadow(0 0 30px rgba(255,215,0,0.5))
+            drop-shadow(0 0 60px rgba(201,168,76,0.3));
+  }
+  75%  {
+    filter: drop-shadow(4px 6px 14px rgba(0,0,0,0.3))
+            drop-shadow(0 0 40px rgba(255,215,0,0.6))
+            drop-shadow(0 0 80px rgba(201,168,76,0.4));
+  }
+  100% {
+    filter: drop-shadow(4px 6px 14px rgba(0,0,0,0.3))
+            drop-shadow(0 0 25px rgba(255,215,0,0.45))
+            drop-shadow(0 0 50px rgba(201,168,76,0.3));
+  }
+}
+
+.letter-board.phase-glow {
+  animation: letter-board-glow 2s ease-in-out forwards;
+}
+
+/*
+ * インクの色が墨色 → 金色 → 白熱 → 金色へ変化
+ * フェアリーテイル的な「魔法の文字が白熱して輝く」演出
+ * RAFループで毎フレーム再描画されて色変化がキャンバスに反映される
+ */
+@keyframes ink-to-gold {
+  0%   { color: #150800; }          /* 墨色（濃い黒茶） */
+  12%  { color: #7a3e06; }          /* 琥珀 */
+  25%  { color: #c97010; }          /* オレンジゴールド */
+  38%  { color: #f5a000; }          /* 鮮やかな金 */
+  50%  { color: #ffc800; }          /* 明るい金 */
+  60%  { color: #fff4b0; }          /* 白熱ピーク前（黄みがかった白） */
+  65%  { color: #fffde0; }          /* 白熱ピーク（ほぼ白） */
+  70%  { color: #fff0a0; }          /* ピーク直後 */
+  80%  { color: #ffd700; }          /* 落ち着きゴールド */
+  90%  { color: #e8b800; }
+  100% { color: #c9a84c; }          /* 余韻の金 */
+}
+
+/*
+ * 多層グロー：内側（白熱コア）→ 中間（金）→ 外側（琥珀）
+ * 白熱ピーク(65%)でフェアリーテイルOPの「過飽和した金の光」を再現
+ */
+@keyframes golden-aura {
+  0%   { filter: none; }
+  10%  {
+    filter:
+      drop-shadow(0 0 3px rgba(255,190,0,0.35));
+  }
+  25%  {
+    filter:
+      drop-shadow(0 0 8px rgba(255,210,0,0.7))
+      drop-shadow(0 0 18px rgba(255,160,0,0.45));
+  }
+  40%  {
+    filter:
+      drop-shadow(0 0 14px rgba(255,215,0,0.95))
+      drop-shadow(0 0 32px rgba(255,155,0,0.75))
+      drop-shadow(0 0 60px rgba(201,140,20,0.5));
+  }
+  55%  {
+    filter:
+      drop-shadow(0 0 10px rgba(255,255,220,0.9))  /* 白熱コア */
+      drop-shadow(0 0 24px rgba(255,215,0,1))
+      drop-shadow(0 0 55px rgba(255,155,0,0.88))
+      drop-shadow(0 0 100px rgba(201,140,20,0.65))
+      drop-shadow(0 0 150px rgba(255,120,0,0.35));
+  }
+  65%  {  /* 白熱ピーク — 光が飽和して全体が輝く */
+    filter:
+      drop-shadow(0 0 6px rgba(255,255,255,1))     /* 純白コア */
+      drop-shadow(0 0 16px rgba(255,250,180,1))
+      drop-shadow(0 0 35px rgba(255,220,0,1))
+      drop-shadow(0 0 70px rgba(255,160,0,0.95))
+      drop-shadow(0 0 120px rgba(201,140,20,0.75))
+      drop-shadow(0 0 180px rgba(255,120,0,0.45));
+  }
+  72%  {  /* ピーク直後、少し落ち着く */
+    filter:
+      drop-shadow(0 0 8px rgba(255,255,220,0.95))
+      drop-shadow(0 0 22px rgba(255,225,0,1))
+      drop-shadow(0 0 50px rgba(255,165,0,0.9))
+      drop-shadow(0 0 100px rgba(201,140,20,0.72))
+      drop-shadow(0 0 155px rgba(255,120,0,0.42));
+  }
+  83%  {
+    filter:
+      drop-shadow(0 0 10px rgba(255,215,0,0.9))
+      drop-shadow(0 0 28px rgba(255,165,0,0.82))
+      drop-shadow(0 0 65px rgba(201,140,20,0.6))
+      drop-shadow(0 0 110px rgba(255,120,0,0.32));
+  }
+  100% {  /* 余韻：まだ金色に輝いている */
+    filter:
+      drop-shadow(0 0 8px rgba(255,210,0,0.75))
+      drop-shadow(0 0 22px rgba(255,155,0,0.6))
+      drop-shadow(0 0 50px rgba(201,140,20,0.4));
+  }
+}
+
+.letter-canvas-area.glow .writing-canvas {
+  border-color: transparent;
+  animation:
+    ink-to-gold 2s cubic-bezier(0.4, 0, 0.6, 1) forwards,
+    golden-aura 2s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+/* ============================================================
+   Phase 2: Fold（手紙が折りたたまれる）
+   ============================================================ */
+
+@keyframes letter-fold {
+  0%   { transform: perspective(700px) rotateX(0deg) scale(1); opacity: 1; }
+  60%  { transform: perspective(700px) rotateX(-45deg) scale(0.85); opacity: 0.7; }
+  100% { transform: perspective(700px) rotateX(-85deg) scale(0.5); opacity: 0; }
+}
+
+.letter-board.phase-fold {
+  animation: letter-fold 0.8s ease-in forwards;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Phase 3 & 4: Envelope（封筒 → 飛んでいく）
+   ============================================================ */
+
+.envelope-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 5, 2, 0.6);
+  z-index: 50;
+  animation: env-overlay-in 0.3s ease forwards;
+}
+
+@keyframes env-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.envelope-overlay--fly {
+  animation: env-overlay-out 0.9s ease forwards;
+}
+
+@keyframes env-overlay-out {
+  to { opacity: 0; }
+}
+
+.envelope-wrapper {
+  position: relative;
+  width: 240px;
+  height: 160px;
+  animation: env-wrapper-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes env-wrapper-in {
+  from { transform: scale(0.6) translateY(30px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.envelope-wrapper--fly {
+  animation: env-wrapper-fly 0.9s ease-in forwards;
+}
+
+@keyframes env-wrapper-fly {
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  25%  { transform: translate(20px, -40px) rotate(8deg) scale(1.03); opacity: 0.95; }
+  100% { transform: translate(230px, -370px) rotate(30deg) scale(0.65); opacity: 0; }
+}
+
+/* 封筒本体 */
+.envelope {
+  position: absolute;
+  inset: 0;
+}
+
+.envelope-body {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(100, 55, 10, 0.15) 0%, transparent 50%),
+    linear-gradient(145deg, #c9a060 0%, #d4b070 50%, #c0983a 100%);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* 左の三角折り（装飾） */
+.envelope-body__left {
+  position: absolute;
+  inset: 0 50% 0 0;
+  background: rgba(0, 0, 0, 0.07);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+/* 右の三角折り（装飾） */
+.envelope-body__right {
+  position: absolute;
+  inset: 0 0 0 50%;
+  background: rgba(0, 0, 0, 0.07);
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+}
+
+/* 下の三角折り（装飾） */
+.envelope-body__bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 72px;
+  background: rgba(0, 0, 0, 0.055);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+/* 上フラップ（三角形） */
+.envelope-flap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 90px;
+  background:
+    radial-gradient(ellipse at 50% 15%, rgba(255,255,255,0.1) 0%, transparent 60%),
+    linear-gradient(165deg, #d6b880 0%, #c8a055 100%);
+  clip-path: polygon(0 0, 50% 100%, 100% 0);
+  transform-origin: 50% 0%;
+  transform: perspective(500px) rotateX(0deg);
+  transition: transform 0.5s ease;
+  z-index: 3;
+  backface-visibility: hidden;
+}
+
+.envelope--open .envelope-flap {
+  transform: perspective(500px) rotateX(-180deg);
+}
+
+/* 封筒に入っていくミニ手紙 */
+.letter-mini {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 130px;
+  height: 88px;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(100, 55, 10, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 75% 60%, rgba(90, 50, 8, 0.15) 0%, transparent 45%),
+    linear-gradient(165deg, #d9bd91 0%, #c9a860 100%);
+  box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+  /* 封筒の上から滑り込む */
+  animation: letter-slide-in 0.4s ease-in forwards;
+}
+
+@keyframes letter-slide-in {
+  0%   { top: -100px; opacity: 1; }
+  65%  { top: 20px; opacity: 1; }
+  100% { top: 55px; opacity: 0; }
 }

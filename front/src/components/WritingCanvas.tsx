@@ -42,6 +42,8 @@ export type WritingCanvasHandle = {
   undo: () => void;
   /** 何も書かれていなければ null */
   exportDrawing: () => Drawing | null;
+  /** 現在の CSS color で描き直す（glow アニメーション中に色を反映するため） */
+  redrawWithCurrentColor: () => void;
 };
 
 type Props = {
@@ -289,6 +291,8 @@ export function WritingCanvas({ ref, disabled, onChange }: Props) {
           })),
         };
       },
+      redrawWithCurrentColor: () =>
+        redraw(canvasRef.current, strokesRef.current),
     };
   });
 
