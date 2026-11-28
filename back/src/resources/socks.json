@@ -1,0 +1,830 @@
+{
+  "imageWidth": 512,
+  "imageHeight": 512,
+  "format": "WebP",
+  "items": [
+    {
+      "id": "WORN-01",
+      "level": 1,
+      "rarity": "使い古し",
+      "name": "穴あき灰色",
+      "comment": "灰色のウール靴下はかかとに大きな穴が開き、縁から糸が垂れている。",
+      "image": "/socks/worn-01.webp",
+      "classification": {
+        "feature": "雑",
+        "beauty": 1,
+        "review": {
+          "fit": "合う",
+          "reason": "大きな穴と垂れた糸で輪郭が大きく崩れている。"
+        }
+      }
+    },
+    {
+      "id": "WORN-02",
+      "level": 1,
+      "rarity": "使い古し",
+      "name": "つぎはぎ茶色",
+      "comment": "茶色の編み地を赤・青・黄の当て布で何度も繕っている。",
+      "image": "/socks/worn-02.webp",
+      "classification": {
+        "feature": "個性的",
+        "beauty": 1,
+        "review": {
+          "fit": "合う",
+          "reason": "不揃いな当て布が独特の色模様を作っている。"
+        }
+      }
+    },
+    {
+      "id": "WORN-03",
+      "level": 1,
+      "rarity": "使い古し",
+      "name": "小さな手縫い",
+      "comment": "色あせたセージグリーンのかかとを、細かく揃えた縫い目で繕っている。",
+      "image": "/socks/worn-03.webp",
+      "classification": {
+        "feature": "丁寧",
+        "beauty": 1,
+        "review": {
+          "fit": "合う",
+          "reason": "色あせたセージグリーンのかかとを、細かく揃えた縫い目で繕っている。"
+        }
+      }
+    },
+    {
+      "id": "WORN-04",
+      "level": 1,
+      "rarity": "使い古し",
+      "name": "短すぎる当て布",
+      "comment": "赤錆色の靴下を小さな当て布で繕った跡があり、布が引きつれている。",
+      "image": "/socks/worn-04.webp",
+      "classification": {
+        "feature": "不器用",
+        "beauty": 2,
+        "review": {
+          "fit": "合う",
+          "reason": "赤錆色の靴下を小さな当て布で繕った跡があり、布が引きつれている。"
+        }
+      }
+    },
+    {
+      "id": "WORN-05",
+      "level": 1,
+      "rarity": "使い古し",
+      "name": "すすけた白",
+      "comment": "すすで黒ずんだ生成りの靴下に折りじわが深く残っている。",
+      "image": "/socks/worn-05.webp",
+      "classification": {
+        "feature": "雑",
+        "beauty": 2,
+        "review": {
+          "fit": "合う",
+          "reason": "すす汚れと折りじわが不規則に目立つ。"
+        }
+      }
+    },
+    {
+      "id": "WORN-06",
+      "level": 1,
+      "rarity": "使い古し",
+      "name": "色あせた縞",
+      "comment": "青と白の横縞が薄れ、履き口がだらりと伸びている。",
+      "image": "/socks/worn-06.webp",
+      "classification": {
+        "feature": "冷たい",
+        "beauty": 1,
+        "review": {
+          "fit": "合う",
+          "reason": "色あせた青と白の縞がひんやりした印象を与える。"
+        }
+      }
+    },
+    {
+      "id": "WORN-07",
+      "level": 1,
+      "rarity": "使い古し",
+      "name": "霧色の透かし編み",
+      "comment": "淡いからし色の薄手の編み地に、小さな菱形の透かし模様が並んでいる。",
+      "image": "/socks/worn-07.webp",
+      "classification": {
+        "feature": "繊細",
+        "beauty": 1,
+        "review": {
+          "fit": "合う",
+          "reason": "淡いからし色の薄手の編み地に、小さな菱形の透かし模様が並んでいる。"
+        }
+      }
+    },
+    {
+      "id": "WORN-08",
+      "level": 1,
+      "rarity": "使い古し",
+      "name": "縫い直した履き口",
+      "comment": "えんじ色の履き口を目の粗い白い糸で縫い直している。",
+      "image": "/socks/worn-08.webp",
+      "classification": {
+        "feature": "不器用",
+        "beauty": 1,
+        "review": {
+          "fit": "合う",
+          "reason": "履き口の縫い直しが波打ち、粗い白糸の縫い目が不揃いに見える。"
+        }
+      }
+    },
+    {
+      "id": "WORN-09",
+      "level": 1,
+      "rarity": "使い古し",
+      "name": "子うさぎの靴下",
+      "comment": "くすんだ紫の丸い短靴下に、長い耳の子うさぎが一羽刺繍されている。",
+      "image": "/socks/worn-09.webp",
+      "classification": {
+        "feature": "可愛い",
+        "beauty": 1,
+        "review": {
+          "fit": "合う",
+          "reason": "くすんだ紫の丸い短靴下に、長い耳の子うさぎが一羽刺繍されている。"
+        }
+      }
+    },
+    {
+      "id": "DAILY-01",
+      "level": 2,
+      "rarity": "素朴",
+      "name": "パン屋の朝",
+      "comment": "はちみつ色のケーブル編みに麦の穂を一房縫い込んでいる。",
+      "image": "/socks/daily-01.webp",
+      "classification": {
+        "feature": "暖かい",
+        "beauty": 2,
+        "review": {
+          "fit": "合う",
+          "reason": "はちみつ色とふっくらしたケーブル編み。"
+        }
+      }
+    },
+    {
+      "id": "DAILY-02",
+      "level": 2,
+      "rarity": "素朴",
+      "name": "木こりの靴下",
+      "comment": "モスグリーンの太いリブに茶色の補強を合わせている。",
+      "image": "/socks/daily-02.webp",
+      "classification": {
+        "feature": "暖かい",
+        "beauty": 1,
+        "review": {
+          "fit": "合う",
+          "reason": "厚いリブと茶色の補強に防寒用の実用感がある。"
+        }
+      }
+    },
+    {
+      "id": "DAILY-03",
+      "level": 2,
+      "rarity": "素朴",
+      "name": "小さな水玉",
+      "comment": "くすんだ青の短い靴下に生成りの小さな水玉が散っている。",
+      "image": "/socks/daily-03.webp",
+      "classification": {
+        "feature": "可愛い",
+        "beauty": 2,
+        "review": {
+          "fit": "合う",
+          "reason": "短めの丸い形と小さな水玉。"
+        }
+      }
+    },
+    {
+      "id": "DAILY-04",
+      "level": 2,
+      "rarity": "素朴",
+      "name": "港の縞",
+      "comment": "生成りの編み地に青い横縞が三本走っている。",
+      "image": "/socks/daily-04.webp",
+      "classification": {
+        "feature": "かっこいい",
+        "beauty": 1,
+        "review": {
+          "fit": "合う",
+          "reason": "白地と青い縞に船乗りを思わせるすっきりした印象がある。"
+        }
+      }
+    },
+    {
+      "id": "DAILY-05",
+      "level": 2,
+      "rarity": "素朴",
+      "name": "郵便屋の朝",
+      "comment": "薄茶の靴下の履き口に赤い切手の刺繍がついている。",
+      "image": "/socks/daily-05.webp",
+      "classification": {
+        "feature": "丁寧",
+        "beauty": 2,
+        "review": {
+          "fit": "合う",
+          "reason": "小さな切手の刺繍が端正に収まっている。"
+        }
+      }
+    },
+    {
+      "id": "DAILY-06",
+      "level": 2,
+      "rarity": "素朴",
+      "name": "山小屋の夜",
+      "comment": "濃い茶色のウールに白い山並みを編み込んでいる。",
+      "image": "/socks/daily-06.webp",
+      "classification": {
+        "feature": "かっこいい",
+        "beauty": 2,
+        "review": {
+          "fit": "合う",
+          "reason": "濃い茶と白の山並みの対比に山歩きの装いを思わせる雰囲気がある。"
+        }
+      }
+    },
+    {
+      "id": "DAILY-07",
+      "level": 2,
+      "rarity": "素朴",
+      "name": "薄荷の折り返し",
+      "comment": "薄荷色の折り返しと生成りの身頃を合わせた短い靴下。",
+      "image": "/socks/daily-07.webp",
+      "classification": {
+        "feature": "繊細",
+        "beauty": 2,
+        "review": {
+          "fit": "合う",
+          "reason": "生成りの編み地に小さな透かし模様が並ぶ。"
+        }
+      }
+    },
+    {
+      "id": "DAILY-08",
+      "level": 2,
+      "rarity": "素朴",
+      "name": "森のきのこ",
+      "comment": "栗色の足首に小さなきのこが二つ並んでいる。",
+      "image": "/socks/daily-08.webp",
+      "classification": {
+        "feature": "個性的",
+        "beauty": 2,
+        "review": {
+          "fit": "合う",
+          "reason": "足首に並ぶ小さなきのこの刺繍が珍しい。"
+        }
+      }
+    },
+    {
+      "id": "DAILY-09",
+      "level": 2,
+      "rarity": "素朴",
+      "name": "石畳の格子",
+      "comment": "灰青色の靴下に小ぶりな格子模様を編み込んでいる。",
+      "image": "/socks/daily-09.webp",
+      "classification": {
+        "feature": "冷たい",
+        "beauty": 2,
+        "review": {
+          "fit": "合う",
+          "reason": "灰青の色と直線的な格子がひんやりした印象を作る。"
+        }
+      }
+    },
+    {
+      "id": "CRAFT-01",
+      "level": 3,
+      "rarity": "細工",
+      "name": "生成りのひと払い",
+      "comment": "生成りの短靴下に、筆を払ったように細くなる茶色の曲線が一本走っている。",
+      "image": "/socks/craft-01.webp",
+      "classification": {
+        "feature": "達筆",
+        "beauty": 1,
+        "review": {
+          "fit": "合う",
+          "reason": "生成りの短靴下に、筆を払ったように細くなる茶色の曲線が一本走っている。"
+        }
+      }
+    },
+    {
+      "id": "CRAFT-02",
+      "level": 3,
+      "rarity": "細工",
+      "name": "赤土色の流れ",
+      "comment": "赤土色の靴下を、足首からつま先へ細く流れる生成りの刺繍線が飾っている。",
+      "image": "/socks/craft-02.webp",
+      "classification": {
+        "feature": "達筆",
+        "beauty": 2,
+        "review": {
+          "fit": "合う",
+          "reason": "赤土色の靴下を、足首からつま先へ細く流れる生成りの刺繍線が飾っている。"
+        }
+      }
+    },
+    {
+      "id": "CRAFT-03",
+      "level": 3,
+      "rarity": "細工",
+      "name": "ちぐはぐなボタン",
+      "comment": "水色の靴下に大小のボタンが斜めに並び、糸が不揃いに渡っている。",
+      "image": "/socks/craft-03.webp",
+      "classification": {
+        "feature": "不器用",
+        "beauty": 5,
+        "review": {
+          "fit": "合う",
+          "reason": "水色の靴下に大小のボタンが斜めに並び、糸が不揃いに渡っている。"
+        }
+      }
+    },
+    {
+      "id": "CRAFT-04",
+      "level": 3,
+      "rarity": "細工",
+      "name": "曲がった折り返し",
+      "comment": "セージ色の靴下の折り返しが斜めに傾き、粗い縫い目が片側に寄っている。",
+      "image": "/socks/craft-04.webp",
+      "classification": {
+        "feature": "不器用",
+        "beauty": 4,
+        "review": {
+          "fit": "合う",
+          "reason": "セージ色の靴下の折り返しが斜めに傾き、粗い縫い目が片側に寄っている。"
+        }
+      }
+    },
+    {
+      "id": "CRAFT-05",
+      "level": 3,
+      "rarity": "細工",
+      "name": "走り書きの刺繍",
+      "comment": "生成りの地に藍色の太い糸が走り、途中で何度も交差している。",
+      "image": "/socks/craft-05.webp",
+      "classification": {
+        "feature": "雑",
+        "beauty": 5,
+        "review": {
+          "fit": "合う",
+          "reason": "生成りの地に藍色の太い糸が走り、途中で何度も交差している。"
+        }
+      }
+    },
+    {
+      "id": "CRAFT-06",
+      "level": 3,
+      "rarity": "細工",
+      "name": "ずれたかかとの当て布",
+      "comment": "黄色い靴下のかかとから当て布がずれ、端がめくれたまま大きな縫い目で留まっている。",
+      "image": "/socks/craft-06.webp",
+      "classification": {
+        "feature": "不器用",
+        "beauty": 3,
+        "review": {
+          "fit": "合う",
+          "reason": "黄色い靴下のかかとから当て布がずれ、端がめくれたまま大きな縫い目で留まっている。"
+        }
+      }
+    },
+    {
+      "id": "CRAFT-07",
+      "level": 3,
+      "rarity": "細工",
+      "name": "ハートのレース",
+      "comment": "桃色の短い靴下は花形のレースと三つの小さなハートで飾られている。",
+      "image": "/socks/craft-07.webp",
+      "classification": {
+        "feature": "可愛い",
+        "beauty": 3,
+        "review": {
+          "fit": "合う",
+          "reason": "丸いシルエットに桃色と三つのハート。"
+        }
+      }
+    },
+    {
+      "id": "CRAFT-08",
+      "level": 3,
+      "rarity": "細工",
+      "name": "脱ぎ散らかした縞靴下",
+      "comment": "赤茶と生成りの縞靴下がくしゃっと折れ、履き口が内側へ無造作に巻き込まれている。",
+      "image": "/socks/craft-08.webp",
+      "classification": {
+        "feature": "雑",
+        "beauty": 3,
+        "review": {
+          "fit": "合う",
+          "reason": "赤茶と生成りの縞靴下がくしゃっと折れ、履き口が内側へ無造作に巻き込まれている。"
+        }
+      }
+    },
+    {
+      "id": "CRAFT-09",
+      "level": 3,
+      "rarity": "細工",
+      "name": "飛び散った絵の具",
+      "comment": "深緑の靴下に大小の絵の具のしみが無造作に飛び散っている。",
+      "image": "/socks/craft-09.webp",
+      "classification": {
+        "feature": "雑",
+        "beauty": 4,
+        "review": {
+          "fit": "合う",
+          "reason": "深緑の靴下に大小の絵の具のしみが無造作に飛び散っている。"
+        }
+      }
+    },
+    {
+      "id": "REGAL-01",
+      "level": 4,
+      "rarity": "上質",
+      "name": "夜行列車の車掌",
+      "comment": "濃紺のハイソックスに金線が走り、真鍮色の切符鋏の刺繍が光る。",
+      "image": "/socks/regal-01.webp",
+      "classification": {
+        "feature": "かっこいい",
+        "beauty": 4,
+        "review": {
+          "fit": "合う",
+          "reason": "濃紺の細長い形を金の縦線と車掌の意匠で引き締めている。"
+        }
+      }
+    },
+    {
+      "id": "REGAL-02",
+      "level": 4,
+      "rarity": "上質",
+      "name": "冬の騎手",
+      "comment": "チャコールのリブ編みを深紅の二本線と厚いかかとで引き締めている。",
+      "image": "/socks/regal-02.webp",
+      "classification": {
+        "feature": "かっこいい",
+        "beauty": 5,
+        "review": {
+          "fit": "合う",
+          "reason": "チャコールに深紅の帯と補強を合わせた実用的な形。"
+        }
+      }
+    },
+    {
+      "id": "REGAL-03",
+      "level": 4,
+      "rarity": "上質",
+      "name": "探検家の羅針盤",
+      "comment": "深緑の折り返しの下に金糸の羅針盤が縫い付けられている。",
+      "image": "/socks/regal-03.webp",
+      "classification": {
+        "feature": "丁寧",
+        "beauty": 4,
+        "review": {
+          "fit": "合う",
+          "reason": "羅針盤の細い金線が放射状に揃い、厚い折り返しも均一に仕立てられている。"
+        }
+      }
+    },
+    {
+      "id": "REGAL-04",
+      "level": 4,
+      "rarity": "上質",
+      "name": "紳士のアーガイル",
+      "comment": "えんじと濃紺の菱形を細い金茶の糸が斜めに横切っている。",
+      "image": "/socks/regal-04.webp",
+      "classification": {
+        "feature": "丁寧",
+        "beauty": 3,
+        "review": {
+          "fit": "合う",
+          "reason": "細い斜線を規則正しく交差させたアーガイル。"
+        }
+      }
+    },
+    {
+      "id": "REGAL-05",
+      "level": 4,
+      "rarity": "上質",
+      "name": "船乗りの記章",
+      "comment": "青灰色のヘリンボーンに生成りの錨を一つ刺繍している。",
+      "image": "/socks/regal-05.webp",
+      "classification": {
+        "feature": "かっこいい",
+        "beauty": 3,
+        "review": {
+          "fit": "合う",
+          "reason": "青灰色のヘリンボーンに大きな錨を効かせている。"
+        }
+      }
+    },
+    {
+      "id": "REGAL-06",
+      "level": 4,
+      "rarity": "上質",
+      "name": "苺の便り",
+      "comment": "淡い桃色の靴下に赤い苺を刺繍し、白いレースで履き口を縁取っている。",
+      "image": "/socks/regal-06.webp",
+      "classification": {
+        "feature": "可愛い",
+        "beauty": 4,
+        "review": {
+          "fit": "合う",
+          "reason": "淡い桃色、赤い苺、白いレースの組み合わせ。"
+        }
+      }
+    },
+    {
+      "id": "REGAL-07",
+      "level": 4,
+      "rarity": "上質",
+      "name": "すみれの庭",
+      "comment": "生成りの短い靴下にすみれの刺繍とくすんだ紫のリボンを添えている。",
+      "image": "/socks/regal-07.webp",
+      "classification": {
+        "feature": "可愛い",
+        "beauty": 5,
+        "review": {
+          "fit": "合う",
+          "reason": "すみれの小花とやわらかな紫のリボン。"
+        }
+      }
+    },
+    {
+      "id": "REGAL-08",
+      "level": 4,
+      "rarity": "上質",
+      "name": "暖炉の赤い靴下",
+      "comment": "深紅のケーブル編みに白い折り返しとヒイラギ、吊り輪がついている。",
+      "image": "/socks/regal-08.webp",
+      "classification": {
+        "feature": "暖かい",
+        "beauty": 4,
+        "review": {
+          "fit": "合う",
+          "reason": "暖炉用の深紅の編み地と厚い白い折り返し。"
+        }
+      }
+    },
+    {
+      "id": "REGAL-09",
+      "level": 4,
+      "rarity": "上質",
+      "name": "雪の降る聖夜",
+      "comment": "青灰色のウールに銀糸の雪の結晶と星座が縫い込まれている。",
+      "image": "/socks/regal-09.webp",
+      "classification": {
+        "feature": "冷たい",
+        "beauty": 4,
+        "review": {
+          "fit": "合う",
+          "reason": "青灰色に銀の雪の結晶が浮かぶ。"
+        }
+      }
+    },
+    {
+      "id": "HEIR-01",
+      "level": 5,
+      "rarity": "希少",
+      "name": "舞踏会の一足",
+      "comment": "真珠色の絹のロングソックスに金糸の蔓と薄いレースを重ねている。",
+      "image": "/socks/heir-01.webp",
+      "classification": {
+        "feature": "繊細",
+        "beauty": 5,
+        "review": {
+          "fit": "合う",
+          "reason": "薄いレースと細い金糸の蔓が何層にも重なる。"
+        }
+      }
+    },
+    {
+      "id": "HEIR-02",
+      "level": 5,
+      "rarity": "希少",
+      "name": "手紙を運ぶ靴下",
+      "comment": "淡い青の折り返しの下に封筒形のポケットがあり、手紙の端がのぞいている。",
+      "image": "/socks/heir-02.webp",
+      "classification": {
+        "feature": "個性的",
+        "beauty": 3,
+        "review": {
+          "fit": "合う",
+          "reason": "封筒形のポケットから手紙がのぞく仕掛けが独特。"
+        }
+      }
+    },
+    {
+      "id": "HEIR-03",
+      "level": 5,
+      "rarity": "希少",
+      "name": "月の満ち欠け",
+      "comment": "夜紫の編み地に銀糸の月が新月から満月まで順に並んでいる。",
+      "image": "/socks/heir-03.webp",
+      "classification": {
+        "feature": "冷たい",
+        "beauty": 3,
+        "review": {
+          "fit": "合う",
+          "reason": "夜紫の地に銀色の月が静かに並ぶ。"
+        }
+      }
+    },
+    {
+      "id": "HEIR-04",
+      "level": 5,
+      "rarity": "希少",
+      "name": "温室の蘭",
+      "comment": "深い青緑の絹に淡い藤色の蘭が大きく刺繍されている。",
+      "image": "/socks/heir-04.webp",
+      "classification": {
+        "feature": "繊細",
+        "beauty": 4,
+        "review": {
+          "fit": "合う",
+          "reason": "淡い藤色の蘭の花弁が薄く重なり、細い茎も丁寧に刺繍されている。"
+        }
+      }
+    },
+    {
+      "id": "HEIR-05",
+      "level": 5,
+      "rarity": "希少",
+      "name": "王宮の孔雀",
+      "comment": "紺の生地で青緑と金の孔雀の羽根が扇のように開いている。",
+      "image": "/socks/heir-05.webp",
+      "classification": {
+        "feature": "個性的",
+        "beauty": 5,
+        "review": {
+          "fit": "合う",
+          "reason": "孔雀の羽根を扇状に広げた目を引く構図。"
+        }
+      }
+    },
+    {
+      "id": "HEIR-06",
+      "level": 5,
+      "rarity": "希少",
+      "name": "青緑の筆運び",
+      "comment": "青緑の絹に太さの変わる金糸の曲線が走り、先端は細くほどけるように消えている。",
+      "image": "/socks/heir-06.webp",
+      "classification": {
+        "feature": "達筆",
+        "beauty": 3,
+        "review": {
+          "fit": "合う",
+          "reason": "青緑の絹に太さの変わる金糸の曲線が走り、先端は細くほどけるように消えている。"
+        }
+      }
+    },
+    {
+      "id": "HEIR-07",
+      "level": 5,
+      "rarity": "希少",
+      "name": "琥珀の蜂",
+      "comment": "麦色の靴下に金糸の蜂の巣と琥珀色の蜂を刺繍している。",
+      "image": "/socks/heir-07.webp",
+      "classification": {
+        "feature": "丁寧",
+        "beauty": 5,
+        "review": {
+          "fit": "合う",
+          "reason": "六角形の蜂の巣と蜂を細かな金糸で描き分けている。"
+        }
+      }
+    },
+    {
+      "id": "HEIR-08",
+      "level": 5,
+      "rarity": "希少",
+      "name": "薔薇の紋章",
+      "comment": "墨色の絹の上で深紅の薔薇と銀色の棘が絡み合っている。",
+      "image": "/socks/heir-08.webp",
+      "classification": {
+        "feature": "繊細",
+        "beauty": 3,
+        "review": {
+          "fit": "合う",
+          "reason": "深紅の薔薇を囲む銀糸の細い棘と、緻密な花弁の刺繍が繊細に見える。"
+        }
+      }
+    },
+    {
+      "id": "HEIR-09",
+      "level": 5,
+      "rarity": "希少",
+      "name": "砂時計",
+      "comment": "葡萄色の靴下に金糸の砂時計と流れ落ちる砂の模様がある。",
+      "image": "/socks/heir-09.webp",
+      "classification": {
+        "feature": "達筆",
+        "beauty": 4,
+        "review": {
+          "fit": "合う",
+          "reason": "砂時計を囲む金糸の曲線が左右で整っている。"
+        }
+      }
+    },
+    {
+      "id": "APEX-01",
+      "level": 6,
+      "rarity": "激レア",
+      "name": "北極星の戴冠",
+      "comment": "夜空色の絹に銀の星図を広げ、履き口に北極星をかたどった宝石を留めている。",
+      "image": "/socks/apex-01.webp",
+      "classification": {
+        "feature": "冷たい",
+        "beauty": 5,
+        "review": {
+          "fit": "合う",
+          "reason": "濃紺の夜空と銀色の星図に澄んだ冷たさがある。"
+        }
+      }
+    },
+    {
+      "id": "APEX-02",
+      "level": 6,
+      "rarity": "激レア",
+      "name": "永遠の聖夜",
+      "comment": "深紅のベルベットに雪の街と金の灯りが織り込まれ、履き口を雪白の毛皮が飾っている。",
+      "image": "/socks/apex-02.webp",
+      "classification": {
+        "feature": "暖かい",
+        "beauty": 5,
+        "review": {
+          "fit": "合う",
+          "reason": "金色の窓明かり、深紅のベルベット、白い毛皮。"
+        }
+      }
+    },
+    {
+      "id": "APEX-03",
+      "level": 6,
+      "rarity": "激レア",
+      "name": "暁を編む鳳凰",
+      "comment": "燃える橙から濃紺へ移る絹の上で、金糸の鳳凰が翼を広げている。",
+      "image": "/socks/apex-03.webp",
+      "classification": {
+        "feature": "暖かい",
+        "beauty": 3,
+        "review": {
+          "fit": "合う",
+          "reason": "橙色と金糸の鳳凰が炎を思わせる。"
+        }
+      }
+    },
+    {
+      "id": "APEX-04",
+      "level": 6,
+      "rarity": "激レア",
+      "name": "夜明けのオーロラ",
+      "comment": "深い藍の靴下に緑と薄紫のオーロラが偏光する糸で織り込まれている。",
+      "image": "/socks/apex-04.webp",
+      "classification": {
+        "feature": "個性的",
+        "beauty": 4,
+        "review": {
+          "fit": "合う",
+          "reason": "藍色の編み地を横切る緑と薄紫のオーロラ。"
+        }
+      }
+    },
+    {
+      "id": "APEX-05",
+      "level": 6,
+      "rarity": "激レア",
+      "name": "白銀の一筆",
+      "comment": "白銀の絹に墨色と金の線が大きく弧を描き、細く鋭い先端へ流れている。",
+      "image": "/socks/apex-05.webp",
+      "classification": {
+        "feature": "達筆",
+        "beauty": 5,
+        "review": {
+          "fit": "合う",
+          "reason": "白銀の絹に墨色と金の線が大きく弧を描き、細く鋭い先端へ流れている。"
+        }
+      }
+    }
+  ],
+  "classification": {
+    "features": [
+      "個性的",
+      "雑",
+      "可愛い",
+      "丁寧",
+      "かっこいい",
+      "繊細",
+      "達筆",
+      "不器用",
+      "暖かい",
+      "冷たい"
+    ],
+    "beautyLevels": {
+      "1": "かなり粗い",
+      "2": "やや粗い",
+      "3": "標準",
+      "4": "整っている",
+      "5": "とても整っている"
+    },
+    "selection": "手書きの「と」の印象に最も近い項目を1つ選び、字の綺麗さを1〜5で評価する。両方の値が一致する靴下を1つ選ぶ。",
+    "assignmentRule": "字の綺麗さ1・2の20枠はレアリティ1・2の18枚とレアリティ3の2枚で埋める。レアリティ4〜6は綺麗さ3〜5に割り当てる。「雑」「不器用」は綺麗さ1・2にレアリティ1、綺麗さ3〜5にレアリティ3の靴下を割り当てる。"
+  }
+}
