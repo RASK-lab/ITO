@@ -12,6 +12,8 @@ ITO が返す「くつした」は、あらかじめ作った 50 種で固定で
 | `data/socks/original/worn-01.png` … | 元の画像（PNG）。50 枚 | 正 |
 | `front/public/socks/worn-01.webp` … | 表示用の画像（WebP）。50 枚 | 写し |
 | `back/src/resources/socks.json` | バックエンド用の台帳 | 写し |
+| `front/public/share/worn-01.jpg` … | シェア用のカード画像（1200 × 630）。50 枚 | 写し |
+| `front/public/s/worn-01/index.html` … | シェア用のページ。カード画像の指定（OGP）を書いたもの。50 個 | 写し |
 | `scripts/build-socks.sh` | 正から写しを作り直すコマンド | — |
 
 - 写しは手で編集しない。直すときは `data/socks/` を編集して、`scripts/build-socks.sh` を実行する。
@@ -66,6 +68,15 @@ scripts/build-socks.sh
 1. `data/socks/original/*.png` をすべて WebP に変換して、`front/public/socks/` に置く。
 2. `socks.json` の ID と PNG、`image` と WebP が過不足なくそろっているかを照合する。足りないもの・余っているものがあれば、名前を出して失敗で終わる。
 3. `data/socks/socks.json` を `back/src/resources/socks.json` にコピーする。
+4. シェア用のカード画像とページを作り直す（`scripts/build-share.py`。これだけを実行してもよい）。Pillow（`pip install pillow`）と日本語のフォントが必要。
+
+### シェア用のカード画像とページ
+
+X などに投稿されたアドレスの下に、画像つきのカードを出すためのものです。結果の画面の「シェア」は、くつしたごとのページのアドレス（`/s/worn-01/`）を投稿の文に入れます。投稿されると、X がそのページを読みに来て、書いてあるカード画像を出します。人がページを開くと、最初の画面に移ります。
+
+- カード画像は X が外から取りに来るので、ページには本番のドメインから始まるアドレスを書く。いまは仮の `https://ito.example` が入っている。**本番のドメインが決まったら、`scripts/build-share.py` の `SITE_URL` を直して作り直す**（直すまで、カードは出ない）。
+- カードが出るかどうかは、本番に公開してからでないと確かめられない。
+- カード画像はくつしたごとに 1 枚で、書いた人の名前や、書いた「と」は入らない。
 
 注意:
 

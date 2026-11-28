@@ -2,6 +2,7 @@
 # くつしたの「写し」を、元データ（data/socks/）から作り直す。
 #   data/socks/original/*.png  →  front/public/socks/*.webp      （表示用の画像）
 #   data/socks/socks.json      →  back/src/resources/socks.json  （バックエンド用）
+#   上の 2 つ                  →  front/public/share/, front/public/s/（シェア用。scripts/build-share.py）
 # 使い方: scripts/build-socks.sh（リポジトリのどこから実行してもよい）
 # 説明: docs/socks.md
 set -euo pipefail
@@ -51,3 +52,6 @@ mkdir -p "$(dirname "$json_copy")"
 cp "$json" "$json_copy"
 
 echo "作り直しました: front/public/socks/（WebP）、back/src/resources/socks.json"
+
+# 4. シェア用のカード画像とページを作り直す（Pillow が必要）
+python3 "$root/scripts/build-share.py"
