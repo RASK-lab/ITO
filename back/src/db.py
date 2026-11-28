@@ -10,7 +10,9 @@
     POST <ITO_STORE_URL>/db/query
     本文（JSON）: {"sql": "INSERT INTO … VALUES (?, ?, …)", "params": [値, 値, …]}
 
-Worker は、sql を params の順に当てはめて D1 で実行し、成功なら 2xx を返す。
+Worker は、sql を params の順に当てはめて D1 で実行し、成功なら 2xx で
+{"results": [行, …]} を返す（行は、列の名前と値の組。SELECT 以外では空）。
+通す SQL は、INSERT INTO drawings … と SELECT … だけ。
 D1 の表は、下の SCHEMA で先に作っておく（本番では、このファイルは表を作らない）。
 """
 
@@ -81,16 +83,19 @@ def _connect() -> sqlite3.Connection:
     return connection
 
 
-def _query_store(sql: str, params: list) -> None:
-    """Worker に頼んで、D1 で SQL を実行する。2xx 以外や、つながらないときは例外になる。"""
+def _query_store(sql: str, params: list) -> bytes:
+    """Worker に頼んで、D1 で SQL を実行し、応答の本文を返す。
+
+    2xx 以外や、つながらないときは例外になる。
+    """
     request = urllib.request.Request(
         f"{STORE_URL}/db/query",
         data=json.dumps({"sql": sql, "params": params}).encode(),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=STORE_TIMEOUT_SECONDS):
-        pass
+    with urllib.request.urlopen(request, timeout=STORE_TIMEOUT_SECONDS) as response:
+        return response.read()
 
 
 def insert_drawing(record: dict) -> None:
@@ -108,3 +113,14 @@ def insert_drawing(record: dict) -> None:
         connection.execute(
             f"INSERT INTO drawings ({columns}) VALUES ({placeholders})", record
         )
+
+
+def get_sock_id(drawing_id: str) -> str | None:
+    """記録の ID から、結果のくつしたの ID を引く。記録が無ければ None。"""
+    sql = "SELECT sock_id FROM drawings WHERE id = ?"
+    if STORE_URL:
+        rows = json.loads(_query_store(sql, [drawing_id]))["results"]
+        return rows[0]["sock_id"] if rows else None
+    with closing(_connect()) as connection:
+        row = connection.execute(sql, (drawing_id,)).fetchone()
+    return row[0] if row else None

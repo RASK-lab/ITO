@@ -1,6 +1,17 @@
-import { useEffect, useImperativeHandle, useRef } from "react";
+import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, Ref } from "react";
 import { getStroke } from "perfect-freehand";
+import {
+  PEN_DEBUG,
+  copyText,
+  describePenDebugStroke,
+  endPenDebugStroke,
+  keepPenDebugStrokes,
+  penDebugJson,
+  recordPenDebugMove,
+  startPenDebugStroke,
+} from "../penDebug";
+import type { PenDebugStroke } from "../penDebug";
 
 /** 入力の種類 */
 export type PointerType = "mouse" | "touch" | "pen";
@@ -11,8 +22,13 @@ export type PointerType = "mouse" | "touch" | "pen";
  * pressure は筆圧（0〜1）。
  */
 type Point = { x: number; y: number; t: number; pressure: number };
-/** ポインタを押してから離すまでの 1 本の線。pointerType は書きはじめたときの種類。 */
-type Stroke = { pointerType: PointerType; points: Point[] };
+/**
+ * ポインタを押してから離すまでの 1 本の線。pointerType は書きはじめたときの種類。
+ * points は、記録して送る点（端末から届いた点のすべて）。
+ * drawn は、線を描くのに使う点。ペンでは points より粗い（理由は toPath を参照）。
+ * マウスと指では points と同じ配列。
+ */
+type Stroke = { pointerType: PointerType; points: Point[]; drawn: Point[] };
 
 /**
  * 記録する点。[x, y, t, pressure] の並び（分析側の資料に合わせた形。docs/api.md）。
@@ -64,20 +80,6 @@ const LINE_WIDTH_RATIO = 0.02;
  * streamline: 手ぶれの補正。大きいほどなめらかだが、線が手の動きから遅れる。
  */
 const STROKE_OPTIONS = { thinning: 0.6, smoothing: 0.5, streamline: 0.5 };
-/**
- * ペンの筆圧を整えるときの値（smoothPenPressures）。
- * PEN_PRESSURE_WINDOW_MS: いちばん高い筆圧を取る幅（ミリ秒）。画面の更新（約 17 ミリ秒）の
- *   2〜3 回ぶん。短くすると、更新ごとの乱れが太さに出る。
- * PEN_PRESSURE_WINDOW_POINTS: その幅でさかのぼる点の数の上限（時刻が当てにならない
- *   端末で、さかのぼりすぎないため）。
- * PEN_PRESSURE_SMOOTHING_MS: ならす時間（ミリ秒）。大きいほど太さの変化がなめらかに
- *   なるが、筆圧を変えてから太さが追いつくまでが遅くなる。
- * MIN_PRESSURE_STEP_MS: ならすときに、点 1 個が進めたとみなす最短の時間（ミリ秒）。
- */
-const PEN_PRESSURE_WINDOW_MS = 50;
-const PEN_PRESSURE_WINDOW_POINTS = 64;
-const PEN_PRESSURE_SMOOTHING_MS = 60;
-const MIN_PRESSURE_STEP_MS = 4;
 /**
  * 覚える位置の範囲。枠の外へ出た線は、枠の一辺ぶん外側で止める
  * （記録する座標では -1024〜2048。API の受け入れ範囲と同じ）。
@@ -144,72 +146,26 @@ function countPoints(strokes: Stroke[]) {
 }
 
 /**
- * ペンの筆圧を、描くために整える。
- *
- * ペン（Apple Pencil など）では、端末が報告する筆圧に、画面の更新 1 回ごとの乱れが
- * 入ることがある（1 回の更新でまとめて届く点のうち、一部の点だけ筆圧が低く届く）。
- * そのまま太さにすると、速く書いたときは数珠つなぎにくびれ、ゆっくり書いたときは
- * 細い線に点々が並ぶ。
- *
- * どの点が乱れるか、時刻がどう届くかは端末しだいなので、それに頼らない 2 段で整える。
- * 1. 直前の PEN_PRESSURE_WINDOW_MS の中で、いちばん高い筆圧を取る。画面の更新（約 17
- *    ミリ秒）より長い幅で取るので、更新ごとに低く届く点があっても、その影響が出ない。
- * 2. その値を、PEN_PRESSURE_SMOOTHING_MS の時間でならす。
- * 手で変える筆圧は、これらの時間よりゆっくり動くので、強弱は残る。
- *
- * 整えるのは描く太さだけ。記録する筆圧（toRecordedPoint）は、端末が報告した値のまま。
- */
-function smoothPenPressures(points: Point[]) {
-  // 最初の値は、0 でない最初の筆圧（0 は「測れなかった」とみなす）
-  let value = points.find((p) => p.pressure > 0)?.pressure ?? 0.5;
-  // 時刻は、戻らないものとして扱う（まとめて届いた点は、時刻が同じだったり前後したりする）
-  const clocks: number[] = [];
-  let clock = points[0].t;
-  let updatedAt = clock;
-  return points.map((p, i) => {
-    clock = Math.max(clock, p.t);
-    clocks.push(clock);
-    let peak = 0;
-    for (
-      let j = i;
-      j >= 0 &&
-      i - j < PEN_PRESSURE_WINDOW_POINTS &&
-      clock - clocks[j] <= PEN_PRESSURE_WINDOW_MS;
-      j--
-    ) {
-      peak = Math.max(peak, points[j].pressure);
-    }
-    if (peak > 0) {
-      const elapsed = Math.max(MIN_PRESSURE_STEP_MS, clock - updatedAt);
-      updatedAt = clock;
-      value +=
-        (peak - value) * (1 - Math.exp(-elapsed / PEN_PRESSURE_SMOOTHING_MS));
-    }
-    return value;
-  });
-}
-
-/**
  * 1 本の線の形（ふちをなぞった、塗りつぶす形）を作る。太さは筆圧で変える。
  * ペンは、端末が報告した筆圧を使う。マウスと指は筆圧を測れないので、書く速さから作る
- * （ゆっくりは太く、速いと細い）。記録する筆圧（toRecordedPoint）は、ここでは変えない。
+ * （ゆっくりは太く、速いと細い）。
+ *
+ * 描くのに使う点は stroke.drawn。ペンでは、pointermove の通知そのものの点（画面の更新
+ * 1 回につき 1 点）だけが入っていて、まとめて届いた細かい点（getCoalescedEvents）は
+ * 入っていない。iPad の Apple Pencil で、細かい点まで使って描くと、線が数珠つなぎに
+ * くびれたり、点々が並んだりした（筆圧をならしても残った）。通知そのものの点だけで描くのは、
+ * 多くの手書きの実装と同じやり方。細かい点は、記録（stroke.points）には残している。
+ * 筆圧は加工しない。
  *
  * @param finished 書き終えた線なら true。書いている途中の線は、終わりの形がまだ決まらない。
  */
 function toPath(stroke: Stroke, size: number, finished: boolean) {
-  const pen = stroke.pointerType === "pen";
-  // ペンの筆圧は、整えてから使う（理由は smoothPenPressures を参照）
-  const pressures = pen ? smoothPenPressures(stroke.points) : null;
   const outline = getStroke(
-    stroke.points.map((p, i) => [
-      p.x * size,
-      p.y * size,
-      pressures ? pressures[i] : p.pressure,
-    ]),
+    stroke.drawn.map((p) => [p.x * size, p.y * size, p.pressure]),
     {
       ...STROKE_OPTIONS,
       size: size * LINE_WIDTH_RATIO,
-      simulatePressure: !pen,
+      simulatePressure: stroke.pointerType !== "pen",
       last: finished,
     },
   );
@@ -294,6 +250,11 @@ export function WritingCanvas({ ref, disabled, onChange }: Props) {
   const pointCountRef = useRef(0);
   const activeRef = useRef<{ pointerId: number; stroke: Stroke } | null>(null);
   const startedAtRef = useRef<number | null>(null);
+  // ここから 4 つは、ペンの入力の調査用（アドレスに ?debug=pen を付けたときだけ使う。penDebug.ts）
+  const debugActiveRef = useRef<PenDebugStroke | null>(null);
+  const debugStrokesRef = useRef<PenDebugStroke[]>([]);
+  const [debugText, setDebugText] = useState("");
+  const [debugCopied, setDebugCopied] = useState("");
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -393,19 +354,22 @@ export function WritingCanvas({ ref, disabled, onChange }: Props) {
     startedAtRef.current ??= event.timeStamp;
     const native = event.nativeEvent;
     const pointerType = toPointerType(native);
+    const first = toPoint(
+      native,
+      canvas,
+      startedAtRef.current,
+      toPressure(native, pointerType),
+    );
+    const points = [first];
     const stroke: Stroke = {
       pointerType,
-      points: [
-        toPoint(
-          native,
-          canvas,
-          startedAtRef.current,
-          toPressure(native, pointerType),
-        ),
-      ],
+      points,
+      // ペンは、描くのに使う点を別に持つ。マウスと指は、記録する点をそのまま描く。
+      drawn: pointerType === "pen" ? [first] : points,
     };
     activeRef.current = { pointerId: event.pointerId, stroke };
     strokesRef.current = [...strokesRef.current, stroke];
+    if (PEN_DEBUG) debugActiveRef.current = startPenDebugStroke(native);
     pointCountRef.current += 1;
     // この 1 点で上限に達したら、線はここで終える
     if (pointCountRef.current >= MAX_POINTS) activeRef.current = null;
@@ -426,16 +390,26 @@ export function WritingCanvas({ ref, disabled, onChange }: Props) {
       return;
     }
     const canvas = event.currentTarget;
-    // 画面の更新より細かく届いた点も使い、速く書いても線が角ばらないようにする
+    // 画面の更新より細かく届いた点も覚える（マウスと指は、速く書いても線が角ばらないよう、
+    // 描くのにも使う。ペンは、記録にだけ使う）
     const native = event.nativeEvent;
-    const events = native.getCoalescedEvents?.() ?? [];
-    const { pointerType, points } = active.stroke;
+    const coalesced = native.getCoalescedEvents?.();
+    const events = coalesced ?? [];
+    if (PEN_DEBUG && debugActiveRef.current)
+      recordPenDebugMove(debugActiveRef.current, native, coalesced);
+    const { pointerType, points, drawn } = active.stroke;
     // 上限までの残りの分だけ足す（書いている途中の線があるとき、残りは必ず 1 以上）
     const added = (events.length > 0 ? events : [native])
       .slice(0, MAX_POINTS - pointCountRef.current)
       .map((e) => toPoint(e, canvas, startedAt, toPressure(e, pointerType)));
     points.push(...added);
     pointCountRef.current += added.length;
+    // ペンの線を描くのに使うのは、通知そのものの点だけ（上限の数には入れない）
+    if (drawn !== points) {
+      drawn.push(
+        toPoint(native, canvas, startedAt, toPressure(native, pointerType)),
+      );
+    }
     // 上限に達したら、押したままでも線をそこで終える
     if (pointCountRef.current >= MAX_POINTS) {
       activeRef.current = null;
@@ -444,22 +418,49 @@ export function WritingCanvas({ ref, disabled, onChange }: Props) {
     redraw(canvas, strokesRef.current, activeRef.current?.stroke);
   }
 
+  /** 調査用: 書き終えた線の記録をまとめて、表示を入れ替える */
+  function finishPenDebugStroke(event: PointerEvent) {
+    const stroke = debugActiveRef.current;
+    if (!stroke) return;
+    debugActiveRef.current = null;
+    endPenDebugStroke(stroke, event);
+    debugStrokesRef.current = keepPenDebugStrokes([
+      ...debugStrokesRef.current,
+      stroke,
+    ]);
+    setDebugText(
+      describePenDebugStroke(
+        stroke,
+        strokesRef.current.length,
+        canvasRef.current?.clientWidth ?? 0,
+      ),
+    );
+    setDebugCopied("");
+  }
+
+  /** 調査用: 直近の線の記録（JSON）を、クリップボードに入れる */
+  async function handleDebugCopy() {
+    const json = penDebugJson(
+      debugStrokesRef.current,
+      canvasRef.current?.clientWidth ?? 0,
+    );
+    const copied = await copyText(json);
+    setDebugCopied(copied ? "コピーしました" : "コピーできませんでした");
+  }
+
   function handlePointerEnd(event: ReactPointerEvent<HTMLCanvasElement>) {
     const active = activeRef.current;
     const startedAt = startedAtRef.current;
     if (!active || active.pointerId !== event.pointerId) return;
+    if (PEN_DEBUG) finishPenDebugStroke(event.nativeEvent);
     // 離した時刻を最後の点として残す（押したまま止まっていた時間も、書いた時間に入れる）。
     // 離した瞬間の筆圧は、どの入力でも 0 と報告されるので、直前の点の筆圧を使う。
     if (event.type === "pointerup" && startedAt !== null) {
-      const { points } = active.stroke;
-      points.push(
-        toPoint(
-          event.nativeEvent,
-          event.currentTarget,
-          startedAt,
-          points[points.length - 1].pressure,
-        ),
-      );
+      const { points, drawn } = active.stroke;
+      const toLast = (pressure: number) =>
+        toPoint(event.nativeEvent, event.currentTarget, startedAt, pressure);
+      points.push(toLast(points[points.length - 1].pressure));
+      if (drawn !== points) drawn.push(toLast(drawn[drawn.length - 1].pressure));
       pointCountRef.current += 1;
       if (pointCountRef.current >= MAX_POINTS) notifyChange();
     }
@@ -468,7 +469,7 @@ export function WritingCanvas({ ref, disabled, onChange }: Props) {
     redraw(canvasRef.current, strokesRef.current);
   }
 
-  return (
+  const canvas = (
     <canvas
       ref={canvasRef}
       className="writing-canvas"
@@ -481,5 +482,22 @@ export function WritingCanvas({ ref, disabled, onChange }: Props) {
       onLostPointerCapture={handlePointerEnd}
       onContextMenu={(event) => event.preventDefault()}
     />
+  );
+  // ふだんは枠だけを出す
+  if (!PEN_DEBUG) return canvas;
+  // 調査用の表示。画面に重ねて置くので、枠やボタンの位置は動かない（index.css の .pen-debug）。
+  return (
+    <>
+      {canvas}
+      <div className="pen-debug">
+        <button type="button" onClick={handleDebugCopy}>
+          直近 3 本の値をコピー（JSON）
+        </button>
+        <span> {debugCopied}</span>
+        <pre>
+          {debugText || "ペンの記録: 線を 1 本書くと、ここに値が出ます"}
+        </pre>
+      </div>
+    </>
   );
 }

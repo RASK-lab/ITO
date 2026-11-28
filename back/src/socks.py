@@ -31,3 +31,8 @@ def all_socks() -> tuple[dict, ...]:
         ):
             raise ValueError("くつしたの台帳に、id・name・image のない項目があります")
     return tuple(items)
+
+
+def get_sock(sock_id: str) -> dict | None:
+    """ID からくつしたを引く。台帳に無ければ None。"""
+    return next((item for item in all_socks() if item["id"] == sock_id), None)
