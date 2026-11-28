@@ -17,7 +17,11 @@ const STORE_HOST = "ito.store";
 const KEY_PATTERN = /^[a-z0-9_-]+(\/[a-z0-9_.-]+)+$/;
 
 // /db/query で通す SQL（念のため必要なものだけ）
-const ALLOWED_SQL = [/^\s*INSERT\s+INTO\s+drawings\b/i, /^\s*SELECT\b/i];
+const ALLOWED_SQL = [
+  /^\s*INSERT\s+INTO\s+drawings\b/i,
+  /^\s*INSERT\s+INTO\s+collect_samples\b/i, // 学習データ集め（back/src/collect.py）
+  /^\s*SELECT\b/i,
+];
 
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status });
