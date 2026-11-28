@@ -62,4 +62,11 @@ docker compose exec frontend npm run lint    # フロントの lint
 docker compose exec frontend npx tsc -b      # フロントの型チェック
 ```
 
-バックエンドのテストと lint はまだ用意していません。
+バックエンドの分析（`back/src/judge`）と、確定（`/api/drawings`）から分析を呼ぶところには、テストがあります（`back/src/tests/`）。
+
+```bash
+docker compose exec backend pip install pytest httpx      # 初回のみ（本番のイメージには入れない）
+docker compose exec backend python -m pytest src/tests
+```
+
+手元に Python があれば、`back/` で仮想環境を作っても動かせます（`back/src/judge/README.md` の「開発」）。lint はまだ用意していません。

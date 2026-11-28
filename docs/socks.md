@@ -19,6 +19,14 @@ ITO が返す「くつした」は、あらかじめ作った 50 種で固定で
 - くつしたは増えない固定のものなので、データベースにもオブジェクト置き場にも入れず、Git で管理する。
 - [data.md](data.md) の「くつした」の節は、見本 3 種だったときの内容です。くつしたについては、この文書が新しい内容です。
 
+## 分析での使い方
+
+分析（`back/src/judge/catalog.py`）は、`back/src/resources/socks.json` の `classification` を使って、くつしたを選びます。
+
+- `classification.feature`（印象 10 種）と `classification.beauty`（綺麗さ 1〜5）の 50 マスに、くつしたが 1 つずつあること。欠けや重なりがあると選べないマスができる。確かめるコマンド: `docker compose exec backend python -c "from src.judge import catalog; print(catalog.check())"`（空のリストなら問題なし）
+- `comment`（見た目の説明）と `classification.review.reason`（その印象に合う理由）は、AI がメッセージを書くときの材料になる。
+- レア（特別な書き方で出るくつした）を足すときは、`feature`・`beauty` の代わりに `classification.special` を書いた項目を足す。分析の側は用意済み（キーの一覧は `back/src/judge/README.md`）。
+
 ## 名前の決まり
 
 - くつしたの ID は `系統-番号` の形（例: `WORN-01`）。系統は大文字、番号は 2 桁。分析が返す値や、記録に残す値にはこの ID を使う。
