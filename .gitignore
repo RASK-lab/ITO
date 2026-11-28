@@ -52,3 +52,5 @@ ml/data/
 # 学習の結果（モデル、成績）と、学習用の Python の環境
 ml/runs/
 ml/.venv/
+# R2 の鍵（ml/tools/fetch_labels_r2.py）。絶対にコミットしない
+ml/r2.env

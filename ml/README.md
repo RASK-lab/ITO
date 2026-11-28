@@ -109,7 +109,9 @@ python ml/labeling/server.py
 ## 書き出す
 
 ```bash
-# 本番で付けたラベルを取り出す（合言葉が要る）
+# 本番で付けたラベルを取り出す。R2 の読み取りの鍵があるとき（ml/r2.env。くわしくは TRAINING.md）
+python ml/tools/fetch_labels_r2.py                 # → ml/data/labels/r2-latest.json
+# 鍵がないときは、合言葉で API から
 curl -H "X-Label-Passcode: <合言葉>" https://<公開しているサイト>/api/label/export > labels.json
 # 手元のラベル（ml/data/labels.sqlite3）と合わせて書き出す
 python ml/tools/export_dataset.py --labels labels.json --copy-images   # ml/data/export/<日時>/
@@ -171,7 +173,7 @@ x, y = train[0]   # x: 1×256×256（0〜1）、y: 人数の割合（soft=True�
 
 最後に `normalize` を通し直すので、本番の入力と同じ形のまま変化だけが加わる。
 
-### 手順（GPU のマシンで）
+### 手順（GPU のマシンで。一からの手順は [TRAINING.md](TRAINING.md)）
 
 ```bash
 python -m pip install -r ml/requirements-train.txt   # 先に GPU 用の PyTorch を入れる

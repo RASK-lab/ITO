@@ -89,3 +89,15 @@ def test_find_duplicates(tmp_path, monkeypatch):
         items.append({"id": name, "group": f"g:{name}", "image": f"{name}.png"})
     # 名前の短い group（元のほう）を残す
     assert dedupe.find_duplicates(items) == {"a2": "a"}
+
+
+def test_r2_labels_become_export_format():
+    import fetch_labels_r2
+
+    raters = {"k1": "さとう", "k2": "すずき", "k3": "いない人"}
+    files = {"k1": {"rater": "さとう", "labels": {"a": {"label": "kawaii", "ms": 900, "at": "2026-11-28T10:00:02+00:00"}}},
+             "k2": {"rater": "すずき", "labels": {"b": {"label": "teinei", "ms": 500, "at": "2026-11-28T10:00:01+00:00"}}},
+             "k3": None}
+    out = fetch_labels_r2.to_export("v1", raters, files)
+    assert out["label_set"] == "v1"
+    assert [(r["item_id"], r["rater"], r["label"]) for r in out["labels"]] == [("b", "すずき", "teinei"), ("a", "さとう", "kawaii")]

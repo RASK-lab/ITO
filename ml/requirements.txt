@@ -1,6 +1,8 @@
 # データ作り・ラベル付けに要るもの（ラベル付けのサーバーは標準ライブラリだけで動く）
 numpy
 pillow
+# 本番のラベルを R2 から読む（tools/fetch_labels_r2.py）
+boto3
 # テスト
 pytest
 # 学習（ito_ml/dataset.py を使うとき）
