@@ -174,7 +174,8 @@ docker compose up --build -d
 | 文書 | 内容 |
 |---|---|
 | [development.md](development.md) | 開発の前提と決まりごと |
-| [api.md](api.md) | API |
+| [api-list.md](api-list.md) | API の一覧 |
+| [api.md](api.md) | API のくわしい形 |
 | [data.md](data.md) | データの形と置き場所、本番での切り替え |
 | [socks.md](socks.md) | くつしたのデータ |
 | [spec/index.html](spec/index.html) | 仕様書（機能ごと。ブラウザで開く） |

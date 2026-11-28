@@ -41,7 +41,7 @@ docker compose down            # 停止
 - フロントから API を呼ぶときは、必ず相対パス（`/api/...`）で書く。`http://localhost:8000/...` のような絶対 URL は書かない。デプロイ先でそのまま動かすため。
 - 開発中は、Vite が `/api` への通信をバックエンドに中継する（`front/vite.config.ts`）。
 - API のパスは `/api/` から始める。
-- API の内容は [api.md](api.md) に整理する。足したり変えたりしたら、同じコミットで直す。
+- API は [api-list.md](api-list.md)（一覧）と [api.md](api.md)（くわしい形）に整理する。足したり変えたりしたら、同じコミットで両方を直す。
 
 ## 軽さ
 
