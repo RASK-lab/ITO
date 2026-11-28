@@ -13,6 +13,9 @@ echo "=== Install Cloudflare dependencies ==="
 cd "$ROOT_DIR/infra/cloudflare"
 npm ci
 
+echo "=== Apply D1 migrations ==="
+npx wrangler d1 migrations apply ito-db --remote
+
 echo "=== Deploy to Cloudflare ==="
 npx wrangler deploy
 
