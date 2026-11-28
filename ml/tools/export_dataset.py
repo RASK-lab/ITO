@@ -3,6 +3,11 @@
 使い方（リポジトリの直下で）:
   python ml/tools/export_dataset.py                 # ml/data/export/<日時>/ に書き出す
   python ml/tools/export_dataset.py --copy-images   # 画像も写す（研究室の GPU などへ持っていくとき）
+  python ml/tools/export_dataset.py --labels labels.json   # 本番の /label/ で付けたラベルを使う
+
+本番で付けたラベルの取り出し方（合言葉が要る）:
+  curl -H "X-Label-Passcode: <合言葉>" https://<公開しているサイト>/api/label/export > labels.json
+手元のサーバー（ml/labeling/server.py）のラベル（ml/data/labels.sqlite3）と、両方を合わせて使う。
 
 出力（ml/data/export/<日時>/）:
   dataset.csv     1 行に画像 1 枚（ラベルが 1 つ以上ある画像だけ）。列は下の COLUMNS
@@ -57,16 +62,27 @@ def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser()
     parser.add_argument("--copy-images", action="store_true")
+    parser.add_argument("--labels", type=Path, action="append", default=[],
+                        help="本番の /api/label/export の JSON（何個でも）")
     args = parser.parse_args()
 
     config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     classes = [c["key"] for c in config["classes"]]
     keys = classes + [c["key"] for c in config["special"]]
     items = {i["id"]: i for i in load_items()}
-    with sqlite3.connect(DB_PATH) as connection:
-        rows = connection.execute(
-            "SELECT item_id, rater, label, ms, created_at FROM labels WHERE label_set = ? ORDER BY created_at",
-            (config["label_set"],)).fetchall()
+    rows = []
+    if DB_PATH.exists():
+        with sqlite3.connect(DB_PATH) as connection:
+            rows += connection.execute(
+                "SELECT item_id, rater, label, ms, created_at FROM labels WHERE label_set = ?",
+                (config["label_set"],)).fetchall()
+    for path in args.labels:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if data["label_set"] != config["label_set"]:
+            print(f"とばした: {path}（label_set が {data['label_set']}）")
+            continue
+        rows += [(r["item_id"], r["rater"], r["label"], r.get("ms"), r.get("at")) for r in data["labels"]]
+    rows.sort(key=lambda r: r[4] or "")
     votes: dict[str, Counter] = {}
     for item_id, _, label, _, _ in rows:
         votes.setdefault(item_id, Counter())[label] += 1
