@@ -134,6 +134,9 @@ class SockOut(BaseModel):
     id: str
     name: str
     image: str
+    # シェアする画像に書く（front/src/shareCard.ts）
+    rarity: str
+    comment: str
 
 
 class DrawingOut(BaseModel):
@@ -155,7 +158,14 @@ def make_result() -> tuple[SockOut, str]:
     """
     sock = random.choice(socks.all_socks())
     message = f"あなたの「と」に、くつした「{sock['name']}」が届きました。"
-    return SockOut(id=sock["id"], name=sock["name"], image=sock["image"]), message
+    result = SockOut(
+        id=sock["id"],
+        name=sock["name"],
+        image=sock["image"],
+        rarity=sock["rarity"],
+        comment=sock["comment"],
+    )
+    return result, message
 
 
 def to_stroke_data(drawing: DrawingIn) -> bytes:

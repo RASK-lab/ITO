@@ -1,7 +1,15 @@
 import type { Drawing } from "../components/WritingCanvas";
 
 /** 結果として届くくつした。image は、そのまま <img src> に使えるパス（例: /socks/worn-01.webp）。 */
-export type Sock = { id: string; name: string; image: string };
+export type Sock = {
+  id: string;
+  name: string;
+  image: string;
+  /** レアリティの名前（例: 使い古し） */
+  rarity: string;
+  /** くつしたの説明。一文。 */
+  comment: string;
+};
 
 /**
  * 確定の応答。sock と message は結果。

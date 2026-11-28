@@ -60,7 +60,13 @@ API の一覧は [api-list.md](api-list.md) にまとめています（実装済
 {
   "id": "c2e104adb43642e7b3d5477789cab7fd",
   "created_at": "2026-11-28T03:23:47+00:00",
-  "sock": { "id": "WORN-01", "name": "穴あき灰色", "image": "/socks/worn-01.webp" },
+  "sock": {
+    "id": "WORN-01",
+    "name": "穴あき灰色",
+    "image": "/socks/worn-01.webp",
+    "rarity": "使い古し",
+    "comment": "灰色のウール靴下はかかとに大きな穴が開き、縁から糸が垂れている。"
+  },
   "message": "あなたの「と」に、くつした「穴あき灰色」が届きました。"
 }
 ```
@@ -69,7 +75,7 @@ API の一覧は [api-list.md](api-list.md) にまとめています（実装済
 |---|---|---|
 | `id` | 文字列 | 記録の ID（英数字 32 文字） |
 | `created_at` | 文字列 | 記録した日時（UTC、ISO 8601） |
-| `sock` | オブジェクト | 【仮】結果のくつした。`id`（くつしたの ID）、`name`（名前）、`image`（表示用の画像のパス。フロントはそのまま `<img src>` に使う）。くつしたの台帳（[socks.md](socks.md)）の同じ名前の項目の値 |
+| `sock` | オブジェクト | 【仮】結果のくつした。`id`（くつしたの ID）、`name`（名前）、`image`（表示用の画像のパス。フロントはそのまま `<img src>` に使う）、`rarity`（レアリティの名前）、`comment`（説明）。くつしたの台帳（[socks.md](socks.md)）の同じ名前の項目の値 |
 | `message` | 文字列 | 【仮】結果のメッセージ。一行 |
 
 失敗:
