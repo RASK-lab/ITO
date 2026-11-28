@@ -14,8 +14,10 @@ ITO にある API を、1 枚で見渡すための一覧です。送る内容と
 |---|---|---|---|---|---|
 | GET | `/api/health` | バックエンドが動いているかの確認 | 確認用（画面からは呼ばない） | `back/src/main.py` | 動く |
 | POST | `/api/drawings` | 書いた「と」（線のデータ、画像、ユーザーネーム）を受け取って保存し、結果（くつしたとメッセージ）を返す | 書く画面の「確定」（`front/src/api/drawings.ts`） | `back/src/drawings.py` | 動く。結果は仮（無作為のくつした）。保存先は手元の代わり |
+| GET | `/api/collect/plan` | 学習データ集めの 1 回分（6 個）の、書いてもらう順番と指示を返す | 学習データ集めの画面（`front/src/api/collect.ts`） | `back/src/collect.py` | 動く（手元） |
+| POST | `/api/collect/samples` | 学習データの「と」を 1 つ記録する（指示、利き手などの申告、線のデータ、画像） | 同上 | `back/src/collect.py` | 動く（手元）。本番は Worker と D1 の変更待ち |
 
-くわしい形: [api.md の POST /api/drawings](api.md#post-apidrawings)
+くわしい形: [api.md の POST /api/drawings](api.md#post-apidrawings)、学習データ集めは [collect.md](collect.md)（送る内容は `back/src/collect.py` の `CollectSampleIn`）
 
 ## 2. 分析側のブランチにあるもの（まだ取り込んでいない）
 

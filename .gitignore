@@ -29,6 +29,10 @@ venv/
 # ===== Local data written by the backend =====
 back/data/
 
+# ===== 学習データの書き出し（個人の書いたデータ。docs/collect.md） =====
+out/
+infra/cloudflare/collect.json
+
 # ===== Logs =====
 *.log
 

@@ -12,6 +12,8 @@
 | 書かれた「と」の画像（大小 2 枚） | オブジェクト置き場（Cloudflare R2） | フォルダ `back/data/objects/` | キー `drawings/<id>_1024.png`、`drawings/<id>_256.png` |
 | 書かれた「と」の線のデータ | オブジェクト置き場（Cloudflare R2） | フォルダ `back/data/objects/` | キー `drawings/<id>.json.gz` |
 | 「と」の台帳（いつ、どの画像、分析結果） | データベース（Cloudflare D1） | SQLite のファイル `back/data/ito.sqlite3` | 表 `drawings` |
+| 学習データの「と」（指示、申告、線のデータ） | データベース（Cloudflare D1） | 同じ SQLite のファイル | 表 `collect_samples`（[collect.md](collect.md)） |
+| 学習データの「と」の画像 | オブジェクト置き場（Cloudflare R2） | フォルダ `back/data/objects/` | キー `collect/<id>_1024.png`、`collect/<id>_256.png` |
 
 考え方:
 
