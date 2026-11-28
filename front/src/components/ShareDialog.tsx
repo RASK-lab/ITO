@@ -28,12 +28,24 @@ const isIos =
   /iPhone|iPad|iPod/.test(navigator.userAgent) ||
   (navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1);
 
+/**
+ * 端末の共有の画面に、画像を渡せるか（スマホとタブレットで、ブラウザが対応しているとき）。
+ * 渡せるなら、X は共有の画面を通して、画像つきでアプリに渡す。
+ */
+const canShareImage =
+  isTouch &&
+  typeof navigator.canShare === "function" &&
+  navigator.canShare({
+    files: [new File([], "ito-sock.png", { type: "image/png" })],
+  });
+
 const SAVE_BY_LONG_PRESS =
   "上の画像を長押しして、「写真に保存」を選んでください。";
 
 /**
  * シェアの画面。シェアする画像と、行き先のボタンを出す。
- * 端末の共有の画面は使わない。スマホでは下から、パソコンでは中央に出る（index.css）。
+ * 端末の共有の画面は、スマホの X だけで使う（画像つきでアプリに渡すため）。
+ * スマホでは下から、パソコンでは中央に出る（index.css）。
  */
 export function ShareDialog({ sock, drawingImage, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -114,10 +126,29 @@ export function ShareDialog({ sock, drawingImage, onClose }: Props) {
     }
   }
 
-  /** 文とアドレスを入れた投稿の画面を開く。画像は、アドレスのカードとして出る。 */
-  function handleX() {
-    const query = new URLSearchParams({ text, url: pageUrl });
-    window.open(`https://x.com/intent/post?${query}`, "_blank", "noopener");
+  /** X の、文とアドレスを入れた投稿の画面。画像は、アドレスのカードとして出る。 */
+  const xUrl = `https://x.com/intent/post?${new URLSearchParams({ text, url: pageUrl })}`;
+
+  /**
+   * スマホで、画像を付けた投稿の画面を X のアプリで開くための、端末の共有の画面を出す。
+   * Web から X のアプリに画像を直接渡す方法はなく、端末の共有の画面（ここで X を選ぶ）を
+   * 通すのが唯一の方法。共有の画面を出せない端末では、xUrl のリンクを使う（canShareImage）。
+   */
+  async function handleXWithImage() {
+    if (!card) return;
+    setShowInstagramLink(false);
+    try {
+      await navigator.share({
+        files: [new File([card.blob], FILE_NAME, { type: "image/png" })],
+        // アドレスは文の中に入れる（画像と一緒だと、url の欄を捨てるアプリがあるため）
+        text: `${text} ${pageUrl}`,
+      });
+    } catch (error) {
+      // 利用者が共有の画面を閉じただけなら、何も出さない
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      console.error(error);
+      setNote("共有の画面を開けませんでした。「画像を保存」を使ってください。");
+    }
   }
 
   /** スマホでは LINE のアプリ、パソコンではブラウザ用の共有のページを開く */
@@ -161,9 +192,24 @@ export function ShareDialog({ sock, drawingImage, onClose }: Props) {
           <button type="button" onClick={handleSave} disabled={!card}>
             画像を保存
           </button>
-          <button type="button" onClick={handleX}>
-            X
-          </button>
+          {canShareImage ? (
+            // スマホ: 端末の共有の画面から X を選ぶと、画像つきの投稿の画面がアプリで開く
+            <button type="button" onClick={handleXWithImage} disabled={!card}>
+              X
+            </button>
+          ) : (
+            // パソコンなど: 文とアドレスを入れた投稿の画面を開く（画像はカードとして出る）。
+            // ボタンではなくリンクにする。利用者が自分で押したリンクのときだけ、
+            // X のアプリが開く端末があるため（window.open だとブラウザで開く）。
+            <a
+              className="share-link"
+              href={xUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              X
+            </a>
+          )}
           <button type="button" onClick={handleLine}>
             LINE
           </button>

@@ -98,10 +98,17 @@ export async function makeShareCard(
 }
 
 /**
- * くつしたごとのシェア用のアドレス（例: https://…/s/worn-01/）。
+ * シェア用のアドレスの末尾に付ける番号。
+ * X は、一度読んだアドレスのカードを 1 週間ほど覚えている。カードの画像や文を直したのに
+ * 古いカードが出続けるときは、この番号を上げる（別のアドレスとして読み直される）。
+ */
+const SHARE_PAGE_VERSION = 2;
+
+/**
+ * くつしたごとのシェア用のアドレス（例: https://…/s/worn-01/?v=2）。
  * このページには、X などがカードとして出す画像の指定（OGP）が書いてある。
  * 人が開くと、最初の画面に移る。ページは scripts/build-share.py が作る。
  */
 export function sharePageUrl(sock: Sock): string {
-  return `${window.location.origin}/s/${sock.id.toLowerCase()}/`;
+  return `${window.location.origin}/s/${sock.id.toLowerCase()}/?v=${SHARE_PAGE_VERSION}`;
 }
