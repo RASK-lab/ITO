@@ -24,5 +24,5 @@ def template_comment(sock_id: str, impression: str, special: str | None = None) 
         from .analysis.rare import NOTES
         return f"{NOTES.get(special, '特別な書き方をした')}「と」です。その書きぶりが、レア靴下「{it['name']}」を呼びました。{it['comment']}"
     text = IMPRESSION_PHRASES[impression]
-    text += f"その書きぶりが「{it['name']}」になりました。{it['comment']}"
+    text += f"その書きぶりから、「{it['name']}」が編み上がりました。{it['comment']}"
     return text

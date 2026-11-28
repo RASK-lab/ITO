@@ -14,7 +14,7 @@ from . import catalog, engine
 from .analysis import rare
 from .analysis.axes import IMPRESSION_LABELS
 from .llm import client as llm
-from .llm.prompts import comment_user_text
+from .llm.prompts import comment_user_text, forbidden_words_in
 from .refs import TARGET, raw_reference
 from .schemas import JudgeRequest, JudgeResponse
 from .settings import settings
@@ -77,7 +77,7 @@ async def judge_full(req: JudgeRequest) -> JudgeResponse:
     if j is not None:
         sid = d["sock_id"]
         sock_image = catalog.image_source(sid)
-        c = await llm.comment(png, sock_image, comment_user_text(
+        user_text = comment_user_text(
             sock_label=catalog.label(sid),
             impression_label=IMPRESSION_LABELS[d["impression"]],
             quality_rank=d["quality_rank"],
@@ -86,13 +86,25 @@ async def judge_full(req: JudgeRequest) -> JudgeResponse:
             feature_text=a.axes.reasons.get(d["impression"], []),
             description=catalog.description(sid),
             has_image=sock_image is not None,
-        ))
+        )
+        c = await llm.comment(png, sock_image, user_text)
+
+    retried = False
+    if c is not None and forbidden_words_in(c.comment):
+        retried = True
+        bad = forbidden_words_in(c.comment)
+        c = await llm.comment(png, sock_image, user_text + (
+            f"\n前回の文章には使わない言葉（{'、'.join(bad)}）が入っていました。"
+            "その言葉を使わずに、編み上がった靴下を手渡す言葉として書き直してください。"))
+        if c is not None and forbidden_words_in(c.comment):
+            c = None
     t3 = time.perf_counter()
 
     comment = c.comment.strip() if c is not None and c.comment.strip() else engine.template_comment(d)
     degraded = j is None or c is None
     extra = {
         "ai_judgement": j.model_dump() if j is not None else None,
+        "comment_retried": retried,
         "sock_image_used": str(catalog.image_source(d["sock_id"])) if catalog.image_source(d["sock_id"]) else None,
         "timings_ms": {**a.timings, "ai_judge": int((t2 - t1) * 1000), "ai_comment": int((t3 - t2) * 1000)},
     }

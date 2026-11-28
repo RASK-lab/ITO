@@ -74,22 +74,43 @@ def test_full_with_llm(monkeypatch):
     async def comment(png, sock_image, text):
         seen["text"] = text
         seen["image"] = sock_image
-        return SockComment(comment="AIのコメントです。")
+        return SockComment(comment="あなたの「と」から編み上がった一足です。")
 
     monkeypatch.setattr(llm_client, "judge", judge)
     monkeypatch.setattr(llm_client, "comment", comment)
     body = api.post("/api/judge/full", json=_payload(noise=0.03, seed=1)).json()
     assert body["degraded"] is False
-    assert body["comment"] == "AIのコメントです。"
-    assert "選ばれた靴下" in seen["text"]
+    assert body["comment"] == "あなたの「と」から編み上がった一足です。"
+    assert "編み上がった" in seen["text"] and "選ばれた" not in seen["text"]
     assert seen["image"] is not None  # 靴下画像を AI に渡している
     second = json.loads(seen["qjson"])[CANDIDATES_KEY][1]["id"]
     from src.judge import catalog
     feature = catalog.item(body["sock_id"])["classification"]["feature"]
     assert catalog.FEATURE_TO_IMPRESSION[feature] == second
-    assert "靴下の説明" in seen["text"]
+    assert "靴下の見た目" in seen["text"]
 
 
 def test_dev_endpoints_disabled_by_default():
     assert api.post("/api/dev/samples", json=_payload()).status_code == 404
     assert api.get("/api/dev/playground").status_code == 404
+
+
+def test_developer_words_trigger_rewrite_then_template(monkeypatch):
+    calls = []
+
+    async def judge(png, qjson):
+        cands = json.loads(qjson)[CANDIDATES_KEY]
+        return ToJudgement(is_to=True, is_to_confidence=90, impression=cands[0]["id"], impression_reason="理由",
+                           balance=6, line_quality=6, endings=6, overall=6)
+
+    async def comment(png, sock_image, text):
+        calls.append(text)
+        return SockComment(comment="この文字は可愛いと判定され、この靴下に関連づけられました。")
+
+    monkeypatch.setattr(llm_client, "judge", judge)
+    monkeypatch.setattr(llm_client, "comment", comment)
+    body = api.post("/api/judge/full", json=_payload(noise=0.03, seed=1)).json()
+    assert len(calls) == 2                      # 1回だけ書き直させる
+    assert "使わない言葉" in calls[1]
+    assert "判定" not in body["comment"] and "関連" not in body["comment"]  # 最後はテンプレート文
+    assert body["degraded"] is True
