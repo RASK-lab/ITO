@@ -27,7 +27,7 @@ docker compose up --build -d
 | 最初の画面 | `/` | `front/src/pages/StartPage.tsx` | ユーザーネームを入れて「手紙を書く」。空でも進める（空なら `User`）。15 文字まで |
 | 書く画面 | `/#write` | `front/src/pages/WritePage.tsx`、`front/src/components/WritingCanvas.tsx` | 枠に「と」を書く。「消去」「1つ戻る」「確定」。左上に、最初の画面へ戻るボタン（開発中の近道） |
 | 待機中 | `/#write` のまま | `front/src/pages/WaitingPage.tsx` | 文を 1 行出すだけ。最低 1.5 秒 |
-| 結果 | `/#write` のまま | `front/src/pages/ResultPage.tsx` | くつしたの画像、メッセージ 1 行、「もう一度」、「シェア」（`front/src/components/ShareDialog.tsx`。シェアする画像と、Instagram・X・LINE・保存・コピーのボタン） |
+| 結果 | `/#write` のまま | `front/src/pages/ResultPage.tsx` | くつしたの画像、メッセージ 1 行、「もう一度」、「シェア」（`front/src/components/ShareDialog.tsx`。シェアする画像と、Instagram（ストーリーズ）・X・LINE・保存・コピーのボタン。X のカードは結果ごと） |
 
 - 画面の切り替えは `front/src/App.tsx`（ライブラリなし。アドレスの `#` で切り替え）。
 - ユーザーネームは、ブラウザに覚える（`front/src/userName.ts`。`localStorage`）。
