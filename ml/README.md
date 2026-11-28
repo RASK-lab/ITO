@@ -134,6 +134,72 @@ train = ToDataset("ml/data/export/20261128-200000", split="train", soft=True)
 x, y = train[0]   # x: 1×256×256（0〜1）、y: 人数の割合（soft=True）かクラスの番号
 ```
 
+## モデル（学習と推論）
+
+研究室の GPU で学習し、本番は CPU（Cloudflare の basic。vCPU 1/4、メモリ 1GiB）で 1 枚ずつ推論する。
+
+### 方針
+
+- ImageNet などで学習済みのモデル（backbone）に、小さな分類の部分（head）を付ける（`ito_ml/model.py`）。
+- データが少なく（本番に近いフォントは 159 枚）、ラベルは 1 枚に 1 人でぶれもあるので、
+  いきなり全部を学習し直さない。
+  1. **compare**: 4 つの候補の重みを固定して特徴を取り出し、分類の部分だけを学習して比べる（数分）。
+  2. **fit**: 選んだ候補で、後ろのまとまりだけを小さな学習率で学習し直す（`--unfreeze 0` なら固定のまま）。
+- 候補: `resnet18`（ImageNet。いちばん軽い）、`convnext_tiny`（ImageNet-22k）、`dinov2_s`（DINOv2。線画に強い）、
+  `clip_b32`（CLIP。雰囲気の概念を持つ）。印象は「何が写っているか」より雰囲気なので、DINOv2 か CLIP が
+  勝つ見込みだが、比べて決める。差が小さければ軽いほうを選ぶ。
+- 本番は ONNX にして onnxruntime で動かす（PyTorch は入れない）。前処理（`normalize`）のあとの
+  0〜1 の画像を渡すだけでよい（大きさの変更・3 チャネル・正規化はモデルの中）。
+
+### ラベルの偏りへの対策（`ito_ml/balance.py`）
+
+- **選び方をならす**（`--balance sampler`。ふつうはこれ）: 少ないクラスの画像を多めに選び、1 回の学習で
+  各クラスがほぼ同じ数になるようにする（`--class-power 1`）。出どころ（くずし字が 98%）もならす（`--source-power 0.5`）。
+- **少ないクラスほど水増しを強く**（`--aug-boost`）: 多めに選ばれる画像が、そのまま繰り返されないようにする。
+- 損失の重みで対策することもできる（`--balance loss`）。両方（`both`）は効きすぎることがあるので、比べてから。
+- 正解率は使わず、**macro-F1**（クラスごとの F1 の平均）で比べる。多いクラスだけ答えるモデルを見抜くため。
+- 学習の前に、クラスごと・出どころごとの数を表示する。1 クラスが数十枚しかないなら、クラスをまとめることも考える。
+
+### 水増し（`ito_ml/augment.py`）
+
+| する | しない |
+|---|---|
+| 少しの回転（±5°）・傾き・縦横比 | 左右・上下の反転（「と」が別の字になる） |
+| 線を 1 ピクセル太く・細く | 一部を消す（字の形が変わる） |
+| ぼかす・粗くする（フォントに多め。「ぼやけている＝くずし字」と覚えさせない） | 大きな回転・変形 |
+| インクの濃さのむら、紙のざらつき | |
+
+最後に `normalize` を通し直すので、本番の入力と同じ形のまま変化だけが加わる。
+
+### 手順（GPU のマシンで）
+
+```bash
+python -m pip install -r ml/requirements-train.txt   # 先に GPU 用の PyTorch を入れる
+# ラベルを取り出して書き出す（「書き出す」の節）。--copy-images で画像ごと GPU のマシンへ写せる
+python ml/tools/train.py bench                  # 候補ごとの ONNX の大きさと CPU の時間（ラベルは要らない）
+python ml/tools/train.py compare                # 候補を比べる（ml/runs/<日時>-compare/report.md）
+python ml/tools/train.py fit --backbone dinov2_s --unfreeze 1 --int8
+python ml/tools/train.py predict ml/runs/<日時>-fit-dinov2_s/model.onnx 画像.png
+```
+
+- 結果は `ml/runs/`（Git に入れない）。`report.md` に、全体・出どころごとの macro-F1、クラスごとの再現率、取り違えの表。
+- compare は train と val を group ごとに 5 つに分けた交差検証（val だけだとフォントが十数枚しかなく、ぶれる）。
+- fit は val の macro-F1 がいちばんよかった時点を残し、最後に test で測る。設定が決まったら、
+  `--use-val-for-train --epochs <よかった回数>` で val も入れて学習し直してもよい。
+- `--int8` で、量子化した小さく速い `model.int8.onnx` も作る（答えが変わらないかを `model.int8.json` の `check` で確かめる）。
+- 本番に近いデータ（アプリで集めた手書き、`collect`）にラベルが付いたら、その成績を最も重く見る。
+
+### 本番での推論（`ito_ml/infer.py`）
+
+```python
+from ito_ml.infer import ImpressionModel
+model = ImpressionModel("model.onnx")      # 隣の model.json（クラス、前処理の版）も読む
+model.predict(image)                        # {"label": "kawaii", "probs": {...}}
+```
+
+要るのは onnxruntime、numpy、pillow だけ。バックエンドに組み込むときは、依存の追加とモデルの置き場
+（コンテナのイメージに入れるか、R2 から読むか）をインフラ担当と決める。
+
 ## 前処理（学習と本番で同じにする）
 
 `ito_ml/preprocess.py` の `normalize`:
@@ -151,5 +217,5 @@ x, y = train[0]   # x: 1×256×256（0〜1）、y: 人数の割合（soft=True�
 ## テスト
 
 ```bash
-python -m pytest ml/tests
+python -m pytest ml/tests    # torch などが無ければ、学習のテストは飛ばす
 ```

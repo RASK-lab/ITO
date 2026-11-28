@@ -49,3 +49,6 @@ AGENTS.md
 
 # ===== 学習データ（ml/README.md。再配布できないデータと、個人の書いた字を含む） =====
 ml/data/
+# 学習の結果（モデル、成績）と、学習用の Python の環境
+ml/runs/
+ml/.venv/

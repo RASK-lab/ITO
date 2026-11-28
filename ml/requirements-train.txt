@@ -1,0 +1,9 @@
+# 学習（tools/train.py）に要るもの。GPU のマシンでは、先に GPU 用の PyTorch を入れる:
+#   https://pytorch.org/get-started/locally/ の指示どおり（Blackwell / RTX 5090 は CUDA 12.8 以上の版）
+-r requirements.txt
+torch
+torchvision
+timm
+onnx
+onnxscript
+onnxruntime
