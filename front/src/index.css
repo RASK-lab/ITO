@@ -272,6 +272,8 @@ dialog.share::backdrop {
   .share-buttons h2 {
     text-align: left;
   }
+}
+
 /* 靴下図鑑（body の grid/place-items を上書きして全幅に広げる） */
 .collection-page {
   width: 100vw;
