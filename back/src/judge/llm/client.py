@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
 import mimetypes
@@ -17,22 +18,24 @@ from .schemas import SockComment, ToJudgement
 
 log = logging.getLogger(__name__)
 
-_client: AsyncAnthropic | None = None
+# イベントループごとに 1 つのクライアントを使う（ループをまたいで使うと通信が壊れるため）
+_clients: dict[int, AsyncAnthropic] = {}
 
 
 def get_client() -> AsyncAnthropic | None:
-    global _client
+    """Claude のクライアント。キーが無い、または 1 日の上限に達したときは None（AI なしで続ける）。"""
     if not settings.llm_enabled or not usage.allow():
         return None
-    if _client is None:
-        _client = AsyncAnthropic(
+    loop_id = id(asyncio.get_running_loop())
+    if loop_id not in _clients:
+        _clients[loop_id] = AsyncAnthropic(
             api_key=settings.anthropic_api_key,
             # 環境変数が空文字でも既定の接続先を使う（compose の env_file に空欄があっても動くように）
             base_url=settings.anthropic_base_url or "https://api.anthropic.com",
             timeout=settings.llm_timeout_s,
             max_retries=1,
         )
-    return _client
+    return _clients[loop_id]
 
 
 def image_block(data: bytes, media_type: str = "image/png") -> dict:

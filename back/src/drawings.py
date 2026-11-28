@@ -3,7 +3,7 @@
 置き場所は storage.py（画像と線のデータ）と db.py（台帳）に任せる。
 記録の形は docs/data.md にある。
 
-結果は、分析ができるまでの仮のもの（下の make_result）。
+結果（くつしたとメッセージ）は、分析（back/src/judge）が作る（下の make_result）。
 """
 
 import base64
@@ -22,6 +22,7 @@ from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt
 
 from src import db, socks, storage
+from src.judge.service import judge_sync, save_for_tuning
 
 logger = logging.getLogger(__name__)
 
@@ -139,22 +140,33 @@ class SockOut(BaseModel):
 class DrawingOut(BaseModel):
     id: str
     created_at: str
-    # ここから下は結果。いまは仮のもの（make_result）。
+    # ここから下は結果。分析（make_result）が作る。
     sock: SockOut
+    # 利用者へのメッセージ。AI が書いた 2〜3 文（100〜150 字ほど）。改行は含まない。
     message: str
 
 
-def make_result() -> tuple[SockOut, str]:
-    """【仮】結果（くつしたと、一行のメッセージ）を作る。
+def make_result(drawing: StrokeData) -> tuple[SockOut, str]:
+    """結果（くつしたと、利用者へのメッセージ）を、分析（back/src/judge）で作る。
 
-    分析（深層学習）ができるまでの代わり。書かれた「と」は見ずに、くつしたを 50 種から
-    無作為に 1 つ選び、決まった文にくつしたの名前を入れる。
-    分析ができたら、この関数の中身を差し替える（書かれた「と」を引数で受け取り、
-    分析で選んだくつしたと、分析で作ったメッセージを返す）。返す形を変えなければ、
-    呼ぶ側で直すのは、引数を渡すところだけで済む。
+    分析は、書かれた「と」の線から、字の綺麗さ（5 段階）と印象（10 種）を決めて、
+    台帳のそのマスのくつしたを選び、AI（Claude）がくつしたの画像を見ながら
+    メッセージ（2〜3 文）を書く。AI が使えないとき（キーが無い、時間切れなど）は、
+    分析が自動で AI なしの結果（テンプレートの文）に切り替えるので、ここでは気にしなくてよい。
+    かかる時間は、AI ありで 3〜11 秒、AI なしで 0.3 秒ほど（上限は JUDGE_AI_BUDGET_S）。
+
+    分析そのものが予期せず失敗したときだけ、確定を止めないように、無作為のくつしたを返す。
     """
-    sock = random.choice(socks.all_socks())
-    message = f"あなたの「と」に、くつした「{sock['name']}」が届きました。"
+    try:
+        result = judge_sync(drawing.strokes, (drawing.canvas.width, drawing.canvas.height))
+        # DEV=1 のときだけ、調整用に判定データを残す（back/src/eval_data/。Git には入らない）
+        save_for_tuning(drawing.model_dump(include=set(StrokeData.model_fields)), result, source="drawings")
+        sock = next(s for s in socks.all_socks() if s["id"] == result.sock_id)
+        message = result.comment
+    except Exception:
+        logger.exception("分析に失敗したので、くつしたを無作為に選びます")
+        sock = random.choice(socks.all_socks())
+        message = f"あなたの「と」から、くつした「{sock['name']}」が編み上がりました。"
     return SockOut(id=sock["id"], name=sock["name"], image=sock["image"]), message
 
 
@@ -246,7 +258,7 @@ def create_drawing(drawing: DrawingIn) -> DrawingOut:
     # 結果は、保存する前に作る。くつしたの台帳が読めないときは、何も保存せずに失敗にする
     # （くつしたのない記録を残さない。返す形も、くつしたのない場合を作らずに済む）。
     try:
-        sock, message = make_result()
+        sock, message = make_result(drawing)
     except Exception:
         logger.exception("結果を作れませんでした（くつしたの台帳を読めない、など）")
         raise HTTPException(500, "結果を作れませんでした") from None

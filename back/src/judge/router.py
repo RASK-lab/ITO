@@ -1,159 +1,114 @@
-"""判定 API。パスは本番（Worker → Container）とローカル（Vite proxy → back）で共通。"""
+"""分析を単体で確かめるための API（/api/judge/*、/api/socks、/api/refs/to、/api/dev/*）。
+
+画面（フロント）は、ふだん POST /api/drawings だけを呼ぶ。分析はその中から
+service.judge_sync() で呼ばれる（back/src/drawings.py の make_result）。
+ここにある API は、分析だけを試したいとき・保存せずに結果だけ欲しいときに使う。
+
+| メソッド | パス | 内容 |
+|---|---|---|
+| POST | /api/judge/full | 分析（AI あり）。保存はしない |
+| POST | /api/judge/geometry | 分析（AI なし。速く無料）。保存はしない |
+| GET | /api/socks | くつした 50 種の台帳（back/src/resources/socks.json の items） |
+| GET | /api/refs/to | 「と」のお手本の点の並び |
+| GET | /api/dev/playground | 手書きで分析を試す確認ページ（DEV=1 のときだけ） |
+| POST | /api/dev/samples | 調整用のサンプルを保存（DEV=1 のときだけ） |
+"""
 
 from __future__ import annotations
 
 import json
-import time
 from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 
-from . import catalog, engine
-from .analysis import rare
-from .analysis.axes import IMPRESSION_LABELS
-from .llm import client as llm
-from .llm.prompts import comment_user_text, forbidden_words_in
+from . import catalog, service
 from .refs import TARGET, raw_reference
 from .schemas import JudgeRequest, JudgeResponse
 from .settings import settings
 
-router = APIRouter(prefix="/api", tags=["judge"])
-
-EVAL_DIR = Path(__file__).resolve().parents[1] / "eval_data"
+router = APIRouter(prefix="/api", tags=["judge（分析）"])
 
 
-def _log_request(req: JudgeRequest, response: JudgeResponse) -> None:
-    """DEV=1 のとき、判定したデータを eval_data/requests/ に保存する（調整・不具合調査用）。"""
-    if not settings.dev:
-        return
-    d = EVAL_DIR / "requests"
-    d.mkdir(parents=True, exist_ok=True)
-    (d / f"{datetime.now():%Y%m%d-%H%M%S-%f}.json").write_text(json.dumps({
-        "request": req.model_dump(), "sock_id": response.sock_id, "comment": response.comment,
-        "degraded": response.degraded, "analysis": response.debug,
-    }, ensure_ascii=False), encoding="utf-8")
+def _canvas(req: JudgeRequest) -> tuple[float, float]:
+    return (req.canvas.width, req.canvas.height)
 
 
-def _analyze(req: JudgeRequest) -> engine.Analysis:
-    return engine.analyze(
-        [s.points for s in req.strokes],
-        [s.pointerType for s in req.strokes],
-        (req.canvas.width, req.canvas.height),
+def _response(result: service.JudgeResult) -> JudgeResponse:
+    # 内部の評価（debug）は DEV=1 のときだけ返す（利用者に品質や印象を見せないため）
+    return JudgeResponse(
+        sock_id=result.sock_id, comment=result.comment, degraded=result.degraded,
+        debug=result.debug if settings.dev else None,
     )
-
-
-@router.post("/judge/geometry", response_model=JudgeResponse, response_model_exclude_none=True,
-             summary="AI を使わずに判定（解析エンジン＋テンプレートのコメント）")
-def judge_geometry(req: JudgeRequest) -> JudgeResponse:
-    a = _analyze(req)
-    d = engine.decide(a, impression=None, ai_beauty=None, ai_is_to=None)
-    res = JudgeResponse(
-        sock_id=d["sock_id"], comment=engine.template_comment(d), degraded=True,
-        debug=engine.debug_info(a, d, {"timings_ms": a.timings}) if settings.dev else None,
-    )
-    _log_request(req, res)
-    return res
 
 
 @router.post("/judge/full", response_model=JudgeResponse, response_model_exclude_none=True,
-             summary="解析エンジン → AI①判定 → 靴下ID → AI②コメント")
+             summary="分析（AI あり）。保存はしない")
 async def judge_full(req: JudgeRequest) -> JudgeResponse:
-    a = _analyze(req)
-    png = engine.plain_png(a)
+    """線のデータから、くつしたとコメントを返す。2〜7 秒かかる。
 
-    t1 = time.perf_counter()
-    j = await llm.judge(png, a.quantitative_json())
-    t2 = time.perf_counter()
-    if j is not None:
-        beauty = (j.balance + j.line_quality + j.endings + j.overall) / 4
-        beauty = max(1.0, min(10.0, beauty)) * 10
-        d = engine.decide(a, impression=j.impression, ai_beauty=beauty, ai_is_to=j.is_to)
-    else:
-        d = engine.decide(a, impression=None, ai_beauty=None, ai_is_to=None)
-
-    c = None
-    if j is not None:
-        sid = d["sock_id"]
-        sock_image = catalog.image_source(sid)
-        user_text = comment_user_text(
-            sock_label=catalog.label(sid),
-            impression_label=IMPRESSION_LABELS[d["impression"]],
-            quality_rank=d["quality_rank"],
-            special_note=rare.NOTES.get(d["special"]) if d["special"] else None,
-            judge_reason=j.impression_reason,
-            feature_text=a.axes.reasons.get(d["impression"], []),
-            description=catalog.description(sid),
-            has_image=sock_image is not None,
-        )
-        c = await llm.comment(png, sock_image, user_text)
-
-    retried = False
-    if c is not None and forbidden_words_in(c.comment):
-        retried = True
-        bad = forbidden_words_in(c.comment)
-        c = await llm.comment(png, sock_image, user_text + (
-            f"\n前回の文章には使わない言葉（{'、'.join(bad)}）が入っていました。"
-            "その言葉を使わずに、編み上がった靴下を手渡す言葉として書き直してください。"))
-        if c is not None and forbidden_words_in(c.comment):
-            c = None
-    t3 = time.perf_counter()
-
-    comment = c.comment.strip() if c is not None and c.comment.strip() else engine.template_comment(d)
-    degraded = j is None or c is None
-    extra = {
-        "ai_judgement": j.model_dump() if j is not None else None,
-        "comment_retried": retried,
-        "sock_image_used": str(catalog.image_source(d["sock_id"])) if catalog.image_source(d["sock_id"]) else None,
-        "timings_ms": {**a.timings, "ai_judge": int((t2 - t1) * 1000), "ai_comment": int((t3 - t2) * 1000)},
-    }
-    res = JudgeResponse(
-        sock_id=d["sock_id"], comment=comment, degraded=degraded,
-        debug=engine.debug_info(a, d, extra) if settings.dev else None,
-    )
-    _log_request(req, res)
-    return res
+    画面からは、保存も一緒に行う POST /api/drawings を使う。
+    """
+    result = await service.judge(req.strokes, _canvas(req))
+    service.save_for_tuning(req.model_dump(), result, source="judge/full")
+    return _response(result)
 
 
-@router.get("/socks", summary="靴下50種の一覧（socks.json の内容）")
+@router.post("/judge/geometry", response_model=JudgeResponse, response_model_exclude_none=True,
+             summary="分析（AI なし）。保存はしない")
+def judge_geometry(req: JudgeRequest) -> JudgeResponse:
+    """AI を使わずに、解析エンジンとテンプレートの文だけで返す（0.3 秒ほど。無料）。"""
+    result = service.judge_without_ai(req.strokes, _canvas(req))
+    service.save_for_tuning(req.model_dump(), result, source="judge/geometry")
+    return _response(result)
+
+
+@router.get("/socks", summary="くつした 50 種の台帳")
 def list_socks() -> list[dict]:
+    """back/src/resources/socks.json の items をそのまま返す（id, name, image, classification など）。"""
     return [catalog.item(sid) for sid in catalog.all_ids()]
 
 
-@router.get("/refs/to", summary="「と」のお手本の点列（0〜1 座標、書き順どおり）")
+@router.get("/refs/to", summary="「と」のお手本の点の並び")
 def get_reference() -> dict:
+    """KanjiVG のお手本。座標は 0〜1、書き順どおり（糸のアニメーションなどで使える）。"""
     return raw_reference(TARGET)
+
+
+# ---------- 開発用（DEV=1 のときだけ。本番では 404） ----------
+
+def _require_dev() -> None:
+    if not settings.dev:
+        raise HTTPException(status_code=404, detail="Not Found")
 
 
 @router.get("/dev/playground", response_class=HTMLResponse, include_in_schema=False)
 def playground() -> str:
-    """手書きで判定を試す確認ページ（DEV=1 のときだけ有効）。"""
-    if not settings.dev:
-        raise HTTPException(status_code=404, detail="Not Found")
+    """手書きで分析を試す確認ページ。内部の評価（品質・印象・特徴量）も表示する。"""
+    _require_dev()
     return (Path(__file__).resolve().parent / "playground.html").read_text(encoding="utf-8")
 
 
 @router.get("/dev/sock-image/{sock_id}", include_in_schema=False)
 def dev_sock_image(sock_id: str) -> FileResponse:
-    """確認ページ用に靴下画像を返す（DEV=1 のときだけ。本番の画像配信はフロント側）。"""
-    path = catalog.image_path(sock_id) if settings.dev and sock_id in catalog.all_ids() else None
+    """確認ページ用のくつしたの画像（本番の画像は、フロントが /socks/*.webp で配る）。"""
+    _require_dev()
+    path = catalog.image_path(sock_id) if sock_id in catalog.all_ids() else None
     if path is None:
         raise HTTPException(status_code=404, detail="Not Found")
     return FileResponse(path)
 
 
-@router.post("/dev/samples", summary="検証用サンプルの保存（DEV=1 のときだけ有効）")
+@router.post("/dev/samples", summary="調整用のサンプルを保存（DEV=1 のときだけ）")
 def save_sample(req: JudgeRequest, intended: str = "", quality: int | None = None, writer: str = "") -> dict:
-    """intended: 書いたつもりの印象（koseiteki など）、quality: 人が付けた品質 1-5。"""
-    if not settings.dev:
-        raise HTTPException(status_code=404, detail="Not Found")
-    EVAL_DIR.mkdir(exist_ok=True)
-    a = _analyze(req)
-    d = engine.decide(a, impression=None, ai_beauty=None, ai_is_to=None)
+    """intended: 書いたつもりの印象（koseiteki など）、quality: 人が付けた綺麗さ 1〜5、writer: 書いた人。"""
+    _require_dev()
+    result = service.judge_without_ai(req.strokes, _canvas(req))
+    service.EVAL_DIR.mkdir(exist_ok=True)
     name = f"{datetime.now():%Y%m%d-%H%M%S-%f}.json"
-    (EVAL_DIR / name).write_text(json.dumps({
+    (service.EVAL_DIR / name).write_text(json.dumps({
         "intended": intended, "quality": quality, "writer": writer,
-        "request": req.model_dump(), "analysis": engine.debug_info(a, d),
-    }, ensure_ascii=False), encoding="utf-8")
-    return {"saved": name, "sock_id_without_ai": d["sock_id"]}
+        "request": req.model_dump(), "analysis": result.debug,
+    }, ensure_ascii=False, default=str), encoding="utf-8")
+    return {"saved": name, "sock_id_without_ai": result.sock_id}

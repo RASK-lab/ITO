@@ -142,12 +142,10 @@ def test_percentile_text():
 
 def test_rare_sock_is_used_when_designed(monkeypatch):
     rare_item = {"id": "RARE-TEST", "level": 7, "rarity": "幻", "name": "テストのレア", "comment": "説明",
-                 "image": "images/APEX-01.png", "classification": {"special": "reversed_order"}}
-    data = dict(catalog._data())
-    data["items"] = list(data["items"]) + [rare_item]
-    for f in (catalog._data, catalog._items, catalog._grid, catalog._rares):
-        f.cache_clear()
-    monkeypatch.setattr(catalog, "_data", lambda: data)
+                 "image": "/socks/rare-test.webp", "classification": {"special": "reversed_order"}}
+    items = tuple(catalog._items_tuple()) + (rare_item,)
+    monkeypatch.setattr(catalog, "_items_tuple", lambda: items)
+    catalog.clear_cache()
     try:
         assert catalog.check() == []
         a = _analyze(from_reference("と", order=[1, 0]))
@@ -155,8 +153,8 @@ def test_rare_sock_is_used_when_designed(monkeypatch):
         assert d["special"] == "reversed_order" and d["sock_id"] == "RARE-TEST" and d["rare"]
         assert "テストのレア" in comments.template_comment(d["sock_id"], d["impression"], d["special"])
     finally:
-        for f in (catalog._items, catalog._grid, catalog._rares):
-            f.cache_clear()
+        monkeypatch.undo()
+        catalog.clear_cache()
 
 
 def test_without_rare_designs_regular_sock_is_used():
@@ -164,3 +162,13 @@ def test_without_rare_designs_regular_sock_is_used():
     d = engine.decide(a, impression=None, ai_beauty=None, ai_is_to=True)
     assert d["special"] == "reversed_order" and not d["rare"]
     assert not catalog.is_rare(catalog.item(d["sock_id"]))
+
+
+def test_image_source_prefers_local_then_url(monkeypatch, tmp_path):
+    (tmp_path / "regal-01.png").write_bytes(b"x")
+    monkeypatch.setenv("SOCK_IMAGE_DIR", str(tmp_path))
+    assert catalog.image_source("REGAL-01") == tmp_path / "regal-01.png"
+    monkeypatch.setattr(catalog, "image_path", lambda sid: None)
+    from src.judge.settings import Settings
+    monkeypatch.setattr(catalog, "settings", Settings(sock_image_base_url="https://example.com/"))
+    assert catalog.image_source("REGAL-01") == "https://example.com/socks/regal-01.webp"

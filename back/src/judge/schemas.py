@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 PointerType = Literal["pen", "touch", "mouse"]
 Ending = Literal["tome", "hane", "harai", "any", "unknown"]
 
-MAX_STROKES = 30
-MAX_POINTS = 5000
+# /api/drawings（back/src/drawings.py）と同じ上限。線の本数には上限を置かない
+MAX_POINTS = 200_000
 
 
 class Canvas(BaseModel):
@@ -37,7 +37,7 @@ class Stroke(BaseModel):
 
 class JudgeRequest(BaseModel):
     canvas: Canvas
-    strokes: list[Stroke] = Field(min_length=1, max_length=MAX_STROKES)
+    strokes: list[Stroke] = Field(min_length=1, max_length=MAX_POINTS)
 
     @model_validator(mode="after")
     def _check_total(self) -> "JudgeRequest":

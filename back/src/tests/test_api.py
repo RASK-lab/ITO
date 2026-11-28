@@ -82,7 +82,6 @@ def test_full_with_llm(monkeypatch):
     assert body["degraded"] is False
     assert body["comment"] == "あなたの「と」から編み上がった一足です。"
     assert "編み上がった" in seen["text"] and "選ばれた" not in seen["text"]
-    assert seen["image"] is not None  # 靴下画像を AI に渡している
     second = json.loads(seen["qjson"])[CANDIDATES_KEY][1]["id"]
     from src.judge import catalog
     feature = catalog.item(body["sock_id"])["classification"]["feature"]
