@@ -9,17 +9,21 @@ export type SavedDrawing = { id: string; created_at: string };
 const TARGET = "と";
 
 /**
- * 書いた「と」をバックエンドに記録する。
+ * 書いた「と」を、書いた人のユーザーネームと一緒にバックエンドに記録する。
  * デプロイ先でも同じように動くよう、API は必ず相対パスで呼ぶ。
  * 仕様は docs/api.md を参照。
  */
-export async function saveDrawing(drawing: Drawing): Promise<SavedDrawing> {
+export async function saveDrawing(
+  drawing: Drawing,
+  userName: string,
+): Promise<SavedDrawing> {
   const response = await fetch("/api/drawings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     // 応答が返らないまま「記録中」で止まらないよう、待つ時間に上限を置く
     signal: AbortSignal.timeout(15_000),
     body: JSON.stringify({
+      user_name: userName,
       target: TARGET,
       canvas: drawing.canvas,
       strokes: drawing.strokes,

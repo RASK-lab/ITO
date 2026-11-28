@@ -1,78 +1,52 @@
-import { useRef, useState } from "react";
-import { saveDrawing } from "./api/drawings";
-import { WritingCanvas } from "./components/WritingCanvas";
-import type { WritingCanvasHandle } from "./components/WritingCanvas";
+import { useEffect, useState } from "react";
+import { StartPage } from "./pages/StartPage";
+import { WritePage } from "./pages/WritePage";
+import { loadUserName, saveUserName } from "./userName";
 
-/** 書ける量の上限に達している間、結果の表示がないときに出す案内 */
-const FULL_MESSAGE =
-  "これ以上は書けません。「1つ戻る」か「消去」で減らしてください。";
+/** 書く画面のアドレス（例: http://localhost:5173/#write）。最初の画面は # なし。 */
+const WRITE_HASH = "#write";
+
+type Screen = "start" | "write";
+
+/**
+ * いまのアドレスから、出す画面を決める。
+ * 書く画面を出すのは、最初の画面で「手紙を書く」を押したことがあるときだけ。
+ * それ以外のアドレスは、最初の画面のアドレス（# なし）に直す。
+ */
+function screenFromAddress(): Screen {
+  if (window.location.hash === WRITE_HASH && loadUserName() !== null) {
+    return "write";
+  }
+  if (window.location.hash !== "") {
+    window.history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search,
+    );
+  }
+  return "start";
+}
 
 function App() {
-  const canvasRef = useRef<WritingCanvasHandle>(null);
-  const [strokeCount, setStrokeCount] = useState(0);
-  const [full, setFull] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [message, setMessage] = useState("");
+  const [screen, setScreen] = useState(screenFromAddress);
 
-  const empty = strokeCount === 0;
+  // ブラウザの「戻る」「進む」や、アドレスの書き換えに合わせる
+  useEffect(() => {
+    const update = () => setScreen(screenFromAddress());
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
 
-  function handleCanvasChange(count: number, isFull: boolean) {
-    setStrokeCount(count);
-    setFull(isFull);
-    setMessage("");
+  function handleStart(name: string) {
+    saveUserName(name);
+    // 履歴を 1 つ進める。書く画面でブラウザの「戻る」を押すと、最初の画面に戻る。
+    window.location.hash = WRITE_HASH;
   }
 
-  async function handleConfirm() {
-    const drawing = canvasRef.current?.exportDrawing();
-    if (!drawing) return;
-    setMessage("");
-    setSending(true);
-    try {
-      const saved = await saveDrawing(drawing);
-      // ID は長いので、画面には先頭だけ出す
-      setMessage(`記録しました（ID: ${saved.id.slice(0, 8)}）`);
-    } catch (error) {
-      console.error(error);
-      setMessage("記録できませんでした。もう一度「確定」を押してください。");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  return (
-    <main>
-      <h1>「と」を書いてください</h1>
-
-      <WritingCanvas
-        ref={canvasRef}
-        disabled={sending}
-        onChange={handleCanvasChange}
-      />
-
-      <div className="actions">
-        <button
-          type="button"
-          onClick={() => canvasRef.current?.clear()}
-          disabled={empty || sending}
-        >
-          消去
-        </button>
-        <button
-          type="button"
-          onClick={() => canvasRef.current?.undo()}
-          disabled={empty || sending}
-        >
-          1つ戻る
-        </button>
-        <button type="button" onClick={handleConfirm} disabled={empty || sending}>
-          {sending ? "記録中" : "確定"}
-        </button>
-      </div>
-
-      <p className="message" role="status">
-        {message || (full ? FULL_MESSAGE : "")}
-      </p>
-    </main>
+  return screen === "write" ? (
+    <WritePage />
+  ) : (
+    <StartPage onStart={handleStart} />
   );
 }
 
