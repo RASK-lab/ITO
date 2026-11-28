@@ -27,6 +27,11 @@ main {
   gap: 1rem;
 }
 
+/* 待機中の画面と結果の画面を出している間、書く画面を隠す（front/src/pages/WritePage.tsx） */
+main[hidden] {
+  display: none;
+}
+
 h1,
 p {
   margin: 0;
@@ -100,4 +105,22 @@ main.start {
 
 .start input {
   padding: 0 0.75rem;
+}
+
+/* 待機中の画面（仮） */
+.waiting p {
+  text-align: center;
+}
+
+/* 結果の画面（仮） */
+.result p {
+  text-align: center;
+}
+
+/* くつしたの画像。書く画面の枠と同じ大きさの正方形に収める。 */
+.sock {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
 }
