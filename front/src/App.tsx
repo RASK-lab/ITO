@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { StartPage } from "./pages/StartPage";
 import { WritePage } from "./pages/WritePage";
+import { CollectionPage } from "./pages/CollectionPage";
 import { loadUserName, saveUserName } from "./userName";
 
 /** 書く画面のアドレス（例: http://localhost:5173/#write）。最初の画面は # なし。 */
 const WRITE_HASH = "#write";
+const COLLECTION_HASH = "#collection";
 
-type Screen = "start" | "write";
+type Screen = "start" | "write" | "collection";
 
 /**
  * いまのアドレスから、出す画面を決める。
@@ -16,6 +18,9 @@ type Screen = "start" | "write";
 function screenFromAddress(): Screen {
   if (window.location.hash === WRITE_HASH && loadUserName() !== null) {
     return "write";
+  }
+  if (window.location.hash === COLLECTION_HASH) {
+    return "collection";
   }
   if (window.location.hash !== "") {
     window.history.replaceState(
@@ -53,7 +58,16 @@ function App() {
     setScreen("start");
   }
 
-  if (screen === "start") return <StartPage onStart={handleStart} />;
+  if (screen === "start") return (
+    <StartPage
+      onStart={handleStart}
+      onCollection={() => { window.location.hash = COLLECTION_HASH; }}
+    />
+  );
+
+  if (screen === "collection") return (
+    <CollectionPage onBack={() => { window.location.hash = ""; }} />
+  );
 
   return (
     <>
