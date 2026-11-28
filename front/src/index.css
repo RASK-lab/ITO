@@ -181,10 +181,23 @@ dialog.share::backdrop {
   text-align: center;
 }
 
-.share-buttons button {
+.share-buttons button,
+.share-buttons .share-link {
   height: 2.75rem;
   font: inherit;
   white-space: nowrap;
+}
+
+/* ボタンと同じ見た目にしたリンク（X。アプリを開くために、ボタンではなくリンクにしている） */
+.share-buttons .share-link {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 1px solid ButtonBorder;
+  border-radius: 0.5rem;
+  background: ButtonFace;
+  color: ButtonText;
+  text-decoration: none;
 }
 
 /* 高さを固定する。文が出ても、ボタンが動かないようにするため。 */

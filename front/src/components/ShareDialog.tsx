@@ -114,11 +114,8 @@ export function ShareDialog({ sock, drawingImage, onClose }: Props) {
     }
   }
 
-  /** 文とアドレスを入れた投稿の画面を開く。画像は、アドレスのカードとして出る。 */
-  function handleX() {
-    const query = new URLSearchParams({ text, url: pageUrl });
-    window.open(`https://x.com/intent/post?${query}`, "_blank", "noopener");
-  }
+  /** X の、文とアドレスを入れた投稿の画面。画像は、アドレスのカードとして出る。 */
+  const xUrl = `https://x.com/intent/post?${new URLSearchParams({ text, url: pageUrl })}`;
 
   /** スマホでは LINE のアプリ、パソコンではブラウザ用の共有のページを開く */
   function handleLine() {
@@ -161,9 +158,19 @@ export function ShareDialog({ sock, drawingImage, onClose }: Props) {
           <button type="button" onClick={handleSave} disabled={!card}>
             画像を保存
           </button>
-          <button type="button" onClick={handleX}>
+          {/*
+            ボタンではなくリンクにする。スマホでは、利用者が自分で押したリンクのときだけ、
+            X のアプリが開く（window.open で開くと、アプリがあってもブラウザで開く）。
+            アプリがなければ、これまでどおりブラウザで開く。
+          */}
+          <a
+            className="share-link"
+            href={xUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             X
-          </button>
+          </a>
           <button type="button" onClick={handleLine}>
             LINE
           </button>
