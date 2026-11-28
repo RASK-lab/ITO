@@ -43,10 +43,30 @@ function App() {
     window.location.hash = WRITE_HASH;
   }
 
-  return screen === "write" ? (
-    <WritePage />
-  ) : (
-    <StartPage onStart={handleStart} />
+  // 開発中だけの近道。書く画面から、最初の画面に戻る。
+  function handleBack() {
+    window.history.pushState(
+      null,
+      "",
+      window.location.pathname + window.location.search,
+    );
+    setScreen("start");
+  }
+
+  if (screen === "start") return <StartPage onStart={handleStart} />;
+
+  return (
+    <>
+      {/* 画面の左上に重ねて置く。ほかの部品の位置は動かさない。 */}
+      <button
+        type="button"
+        onClick={handleBack}
+        style={{ position: "fixed", top: "1rem", left: "1rem", font: "inherit" }}
+      >
+        戻る
+      </button>
+      <WritePage />
+    </>
   );
 }
 
