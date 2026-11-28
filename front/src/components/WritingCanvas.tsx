@@ -65,11 +65,18 @@ const LINE_WIDTH_RATIO = 0.02;
  */
 const STROKE_OPTIONS = { thinning: 0.6, smoothing: 0.5, streamline: 0.5 };
 /**
- * ペンの筆圧をならす時間（ミリ秒）。大きいほど太さの変化がなめらかになるが、
- * 筆圧を変えてから太さが追いつくまでが遅くなる。
+ * ペンの筆圧を整えるときの値（smoothPenPressures）。
+ * PEN_PRESSURE_WINDOW_MS: いちばん高い筆圧を取る幅（ミリ秒）。画面の更新（約 17 ミリ秒）の
+ *   2〜3 回ぶん。短くすると、更新ごとの乱れが太さに出る。
+ * PEN_PRESSURE_WINDOW_POINTS: その幅でさかのぼる点の数の上限（時刻が当てにならない
+ *   端末で、さかのぼりすぎないため）。
+ * PEN_PRESSURE_SMOOTHING_MS: ならす時間（ミリ秒）。大きいほど太さの変化がなめらかに
+ *   なるが、筆圧を変えてから太さが追いつくまでが遅くなる。
+ * MIN_PRESSURE_STEP_MS: ならすときに、点 1 個が進めたとみなす最短の時間（ミリ秒）。
  */
-const PEN_PRESSURE_SMOOTHING_MS = 80;
-/** ならすときに、点 1 個が進めたとみなす最短の時間（ミリ秒） */
+const PEN_PRESSURE_WINDOW_MS = 50;
+const PEN_PRESSURE_WINDOW_POINTS = 64;
+const PEN_PRESSURE_SMOOTHING_MS = 60;
 const MIN_PRESSURE_STEP_MS = 4;
 /**
  * 覚える位置の範囲。枠の外へ出た線は、枠の一辺ぶん外側で止める
@@ -137,28 +144,46 @@ function countPoints(strokes: Stroke[]) {
 }
 
 /**
- * ペンの筆圧を、描くためにならす。
+ * ペンの筆圧を、描くために整える。
  *
- * ペン（Apple Pencil など）で速く書くと、端末が報告する筆圧が、画面の更新 1 回ごとに
- * 上下することがある（1 回の更新でまとめて届く点のうち、新しい点の筆圧が見込みの値で
- * 届くためとみられる）。そのまま太さにすると、線が数珠つなぎのようにくびれる。
- * 手で変える筆圧は、画面の更新（約 17 ミリ秒）よりずっとゆっくり動くので、
- * PEN_PRESSURE_SMOOTHING_MS の時間でならして、細かい上下だけを消す。
+ * ペン（Apple Pencil など）では、端末が報告する筆圧に、画面の更新 1 回ごとの乱れが
+ * 入ることがある（1 回の更新でまとめて届く点のうち、一部の点だけ筆圧が低く届く）。
+ * そのまま太さにすると、速く書いたときは数珠つなぎにくびれ、ゆっくり書いたときは
+ * 細い線に点々が並ぶ。
  *
- * ならすのは描く太さだけ。記録する筆圧（toRecordedPoint）は、端末が報告した値のまま。
+ * どの点が乱れるか、時刻がどう届くかは端末しだいなので、それに頼らない 2 段で整える。
+ * 1. 直前の PEN_PRESSURE_WINDOW_MS の中で、いちばん高い筆圧を取る。画面の更新（約 17
+ *    ミリ秒）より長い幅で取るので、更新ごとに低く届く点があっても、その影響が出ない。
+ * 2. その値を、PEN_PRESSURE_SMOOTHING_MS の時間でならす。
+ * 手で変える筆圧は、これらの時間よりゆっくり動くので、強弱は残る。
+ *
+ * 整えるのは描く太さだけ。記録する筆圧（toRecordedPoint）は、端末が報告した値のまま。
  */
 function smoothPenPressures(points: Point[]) {
-  // 筆圧 0 は「測れなかった」とみなして使わない（最初の値は、0 でない最初の筆圧）
+  // 最初の値は、0 でない最初の筆圧（0 は「測れなかった」とみなす）
   let value = points.find((p) => p.pressure > 0)?.pressure ?? 0.5;
-  let previousT = points[0].t;
-  return points.map((p) => {
-    // まとめて届いた点は、時刻が同じことがある。その場合も少しずつ近づける。
-    const elapsed = Math.max(MIN_PRESSURE_STEP_MS, p.t - previousT);
-    previousT = p.t;
-    if (p.pressure > 0) {
+  // 時刻は、戻らないものとして扱う（まとめて届いた点は、時刻が同じだったり前後したりする）
+  const clocks: number[] = [];
+  let clock = points[0].t;
+  let updatedAt = clock;
+  return points.map((p, i) => {
+    clock = Math.max(clock, p.t);
+    clocks.push(clock);
+    let peak = 0;
+    for (
+      let j = i;
+      j >= 0 &&
+      i - j < PEN_PRESSURE_WINDOW_POINTS &&
+      clock - clocks[j] <= PEN_PRESSURE_WINDOW_MS;
+      j--
+    ) {
+      peak = Math.max(peak, points[j].pressure);
+    }
+    if (peak > 0) {
+      const elapsed = Math.max(MIN_PRESSURE_STEP_MS, clock - updatedAt);
+      updatedAt = clock;
       value +=
-        (p.pressure - value) *
-        (1 - Math.exp(-elapsed / PEN_PRESSURE_SMOOTHING_MS));
+        (peak - value) * (1 - Math.exp(-elapsed / PEN_PRESSURE_SMOOTHING_MS));
     }
     return value;
   });
@@ -173,7 +198,7 @@ function smoothPenPressures(points: Point[]) {
  */
 function toPath(stroke: Stroke, size: number, finished: boolean) {
   const pen = stroke.pointerType === "pen";
-  // ペンの筆圧は、ならしてから使う（理由は smoothPenPressures を参照）
+  // ペンの筆圧は、整えてから使う（理由は smoothPenPressures を参照）
   const pressures = pen ? smoothPenPressures(stroke.points) : null;
   const outline = getStroke(
     stroke.points.map((p, i) => [

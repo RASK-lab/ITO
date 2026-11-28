@@ -30,7 +30,7 @@ const isIos =
 
 /**
  * 端末の共有の画面に、画像を渡せるか（スマホとタブレットで、ブラウザが対応しているとき）。
- * 渡せるなら、X は共有の画面を通して、画像つきでアプリに渡す。
+ * 渡せるなら、「画像つきで共有」のボタンを出す。
  */
 const canShareImage =
   isTouch &&
@@ -44,7 +44,7 @@ const SAVE_BY_LONG_PRESS =
 
 /**
  * シェアの画面。シェアする画像と、行き先のボタンを出す。
- * 端末の共有の画面は、スマホの X だけで使う（画像つきでアプリに渡すため）。
+ * 端末の共有の画面は、スマホの「画像つきで共有」だけで使う（画像をアプリに渡すため）。
  * スマホでは下から、パソコンでは中央に出る（index.css）。
  */
 export function ShareDialog({ sock, drawingImage, onClose }: Props) {
@@ -130,11 +130,12 @@ export function ShareDialog({ sock, drawingImage, onClose }: Props) {
   const xUrl = `https://x.com/intent/post?${new URLSearchParams({ text, url: pageUrl })}`;
 
   /**
-   * スマホで、画像を付けた投稿の画面を X のアプリで開くための、端末の共有の画面を出す。
-   * Web から X のアプリに画像を直接渡す方法はなく、端末の共有の画面（ここで X を選ぶ）を
-   * 通すのが唯一の方法。共有の画面を出せない端末では、xUrl のリンクを使う（canShareImage）。
+   * スマホで、端末の共有の画面を出して、選んだアプリに画像と文を渡す。
+   * Web から X などのアプリに画像を直接渡す方法はなく、端末の共有の画面を通すのが
+   * 唯一の方法。どのアプリが並ぶかは端末しだいで、こちらからは X を指定できない。
+   * 共有の画面を出せない端末では、このボタンを出さない（canShareImage）。
    */
-  async function handleXWithImage() {
+  async function handleShareImage() {
     if (!card) return;
     setShowInstagramLink(false);
     try {
@@ -192,27 +193,34 @@ export function ShareDialog({ sock, drawingImage, onClose }: Props) {
           <button type="button" onClick={handleSave} disabled={!card}>
             画像を保存
           </button>
-          {canShareImage ? (
-            // スマホ: 端末の共有の画面から X を選ぶと、画像つきの投稿の画面がアプリで開く
-            <button type="button" onClick={handleXWithImage} disabled={!card}>
-              X
-            </button>
-          ) : (
-            // パソコンなど: 文とアドレスを入れた投稿の画面を開く（画像はカードとして出る）。
-            // ボタンではなくリンクにする。利用者が自分で押したリンクのときだけ、
-            // X のアプリが開く端末があるため（window.open だとブラウザで開く）。
-            <a
-              className="share-link"
-              href={xUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              X
-            </a>
-          )}
+          {/*
+            X は、文とアドレスを入れた投稿の画面を直接開く（画像は、アドレスのカードとして出る）。
+            ボタンではなくリンクにする。スマホでは、利用者が自分で押したリンクのときだけ、
+            X のアプリが開く（window.open だと、アプリがあってもブラウザで開く）。
+          */}
+          <a
+            className="share-link"
+            href={xUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            X
+          </a>
           <button type="button" onClick={handleLine}>
             LINE
           </button>
+          {canShareImage && (
+            // スマホ: 端末の共有の画面を出す。そこで選んだアプリに、画像そのものを渡せる
+            // （X を選ぶと、画像が付いた投稿の画面になる）。
+            <button
+              type="button"
+              className="share-wide"
+              onClick={handleShareImage}
+              disabled={!card}
+            >
+              画像つきで共有
+            </button>
+          )}
           <button type="button" onClick={() => dialogRef.current?.close()}>
             とじる
           </button>
