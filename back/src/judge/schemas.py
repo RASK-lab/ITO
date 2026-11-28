@@ -6,8 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-Target = Literal["十", "都", "戸", "徒", "ト", "と"]
-Intent = Literal["chikarazuyosa", "yasashisa", "teinei", "genki", "yuuga"]
 PointerType = Literal["pen", "touch", "mouse"]
 Ending = Literal["tome", "hane", "harai", "any", "unknown"]
 
@@ -38,8 +36,6 @@ class Stroke(BaseModel):
 
 
 class JudgeRequest(BaseModel):
-    target: Target
-    intent: Intent = "teinei"
     canvas: Canvas
     strokes: list[Stroke] = Field(min_length=1, max_length=MAX_STROKES)
 
@@ -84,34 +80,8 @@ class GeometryResult(BaseModel):
     variant: str
 
 
-class Beauty(BaseModel):
-    balance: int
-    line_quality: int
-    endings: int
-    overall: int
-
-
-class CorrectionOut(BaseModel):
-    stroke: int
-    kind: Literal["shape", "balance", "ending", "order", "line"]
-    issue: str
-
-
-class LlmResult(BaseModel):
-    read_as: str | None = None
-    confidence: int | None = None
-    impressions: list[str] = []
-    intent_score: int | None = None
-    beauty: Beauty | None = None
-    good_point: str | None = None
-    comment: str | None = None
-    corrections: list[CorrectionOut] = []
-
-
-class JudgeFullResponse(BaseModel):
-    final: int
-    capped: bool = Field(description="判読がお題と違ったため上限がかかったか")
-    degraded: bool = Field(description="LLM が使えず、幾何スコアだけで採点したか")
-    geometry: GeometryResult
-    llm: LlmResult
-    timings_ms: dict[str, int]
+class JudgeResponse(BaseModel):
+    sock_id: str = Field(description="靴下の ID（画像ファイル名と同じ）。Q{品質1-5}-{印象} または R-{レア名}", examples=["Q4-atatakai"])
+    comment: str = Field(description="ユーザーに表示するコメント")
+    degraded: bool = Field(description="AI を使わずに判定した場合 true（コメントはテンプレート文）")
+    debug: dict | None = Field(default=None, description="内部の評価（DEV=1 のときだけ）")

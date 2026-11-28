@@ -8,66 +8,66 @@
   body { font-family: system-ui, "Yu Gothic", sans-serif; margin: 16px; color: #1a2130; background: #f5f7fa; }
   h1 { font-size: 18px; margin: 0 0 12px; }
   .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
-  canvas { background: #fff; border: 1px solid #c9d1dd; border-radius: 8px; touch-action: none; }
+  canvas { background: #fff; border: 1px solid #c9d1dd; border-radius: 8px; touch-action: none; width: 420px; height: 420px; }
   .controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; align-items: center; }
   button { padding: 6px 12px; border-radius: 6px; border: 1px solid #2c4f87; background: #2c4f87; color: #fff; cursor: pointer; }
   button.sub { background: #fff; color: #2c4f87; }
-  .panel { background: #fff; border: 1px solid #dbe1ea; border-radius: 8px; padding: 12px 16px; min-width: 300px; max-width: 560px; }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  td { padding: 3px 6px; border-bottom: 1px solid #eef1f6; }
-  td.n { text-align: right; font-variant-numeric: tabular-nums; }
-  .big { font-size: 40px; font-weight: 700; }
-  pre { font-size: 11px; max-height: 300px; overflow: auto; background: #eef1f6; padding: 8px; border-radius: 6px; }
+  .panel { background: #fff; border: 1px solid #dbe1ea; border-radius: 8px; padding: 12px 16px; min-width: 300px; max-width: 600px; }
+  .sock { font-size: 28px; font-weight: 700; font-family: ui-monospace, Consolas, monospace; }
+  .comment { font-size: 16px; line-height: 1.8; background: #fdf8ec; border-left: 4px solid #c9a85a; padding: 8px 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td { padding: 2px 6px; border-bottom: 1px solid #eef1f6; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; width: 60px; }
+  .bar { position: relative; height: 8px; background: #eef1f6; border-radius: 4px; }
+  .bar span { position: absolute; top: 0; height: 8px; background: #2c4f87; border-radius: 4px; }
   .muted { color: #5a6476; font-size: 13px; }
-  .bar { height: 8px; background: #2c4f87; border-radius: 4px; }
+  details pre { font-size: 11px; max-height: 260px; overflow: auto; background: #eef1f6; padding: 8px; border-radius: 6px; }
+  img.sockimg { max-width: 160px; display: block; margin: 6px 0; }
 </style>
 </head>
 <body>
 <h1>判定エンジン 確認ページ（開発用）</h1>
-<div class="controls">
-  <label>お題 <select id="target"><option>十</option><option>都</option><option>戸</option><option>徒</option><option>ト</option><option>と</option></select></label>
-  <label>意図 <select id="intent">
-    <option value="chikarazuyosa">力強く</option><option value="yasashisa">やさしく</option>
-    <option value="teinei" selected>丁寧に</option><option value="genki">元気よく</option><option value="yuuga">優雅に</option>
-  </select></label>
-  <label><input type="checkbox" id="showRef" checked> お手本を薄く表示</label>
-</div>
 <div class="row">
   <div>
-    <canvas id="c" width="420" height="420"></canvas>
+    <canvas id="c" width="512" height="512"></canvas>
     <div class="controls">
-      <button id="geo">幾何スコア</button>
-      <button id="full">AI講評（LLM）</button>
+      <button id="geo">AIなしで判定</button>
+      <button id="full">AIで判定</button>
       <button class="sub" id="undo">1画戻す</button>
       <button class="sub" id="clear">消す</button>
+    </div>
+    <div class="controls">
+      <label>書いたつもり
+        <select id="intended">
+          <option value="">（なし）</option>
+          <option value="teinei">丁寧</option><option value="zatsu">雑</option>
+          <option value="tappitsu">達筆</option><option value="bukiyou">不器用</option>
+          <option value="kawaii">かわいい</option><option value="kakkoii">かっこいい</option>
+          <option value="atatakai">温かい</option><option value="tsumetai">冷たい</option>
+          <option value="koseiteki">個性的</option><option value="sensai">繊細</option>
+        </select>
+      </label>
+      <label>品質（人の評価） <select id="quality"><option value="">-</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+      <label>名前 <input id="writer" size="8"></label>
       <button class="sub" id="save">サンプル保存</button>
     </div>
-    <p class="muted" id="status">マウス・指・ペンで書いてください。</p>
+    <p class="muted" id="status">マウス・指・ペンで「と」を書いてください。</p>
   </div>
   <div class="panel" id="result"><p class="muted">ここに結果が出ます。</p></div>
 </div>
 
 <script>
 const cv = document.getElementById("c"), ctx = cv.getContext("2d");
-let strokes = [], cur = null, t0 = null, ref = null;
 const $ = (id) => document.getElementById(id);
+let strokes = [], cur = null, t0 = null;
+const LABEL = { teinei: "丁寧", zatsu: "雑", tappitsu: "達筆", bukiyou: "不器用", kawaii: "かわいい", kakkoii: "かっこいい",
+  atatakai: "温かい", tsumetai: "冷たい", koseiteki: "個性的", sensai: "繊細" };
+const AXES = { carefulness: ["丁寧", "雑"], fluency: ["達筆", "不器用"], roundness: ["かわいい", "かっこいい"],
+  warmth: ["温かい", "冷たい"], boldness: ["個性的", "繊細"] };
 
-async function loadRef() {
-  ref = await (await fetch(`/api/refs/${encodeURIComponent($("target").value)}`)).json();
-  draw();
-}
 function draw() {
   ctx.clearRect(0, 0, cv.width, cv.height);
-  if ($("showRef").checked && ref) {
-    ctx.strokeStyle = "rgba(44,79,135,.15)"; ctx.lineWidth = 18; ctx.lineCap = "round"; ctx.lineJoin = "round";
-    const m = 40, s = cv.width - 2 * m;
-    for (const st of ref.variants[0].strokes) {
-      ctx.beginPath();
-      st.points.forEach(([x, y], i) => i ? ctx.lineTo(m + x * s, m + y * s) : ctx.moveTo(m + x * s, m + y * s));
-      ctx.stroke();
-    }
-  }
-  ctx.strokeStyle = "#1a2130"; ctx.lineWidth = 8; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.strokeStyle = "#1a2130"; ctx.lineWidth = 10; ctx.lineCap = "round"; ctx.lineJoin = "round";
   for (const st of strokes.concat(cur ? [cur] : [])) {
     ctx.beginPath();
     st.points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
@@ -78,75 +78,65 @@ function draw() {
 function pt(e) {
   const r = cv.getBoundingClientRect();
   if (t0 === null) t0 = e.timeStamp;
-  return [e.clientX - r.left, e.clientY - r.top, Math.round(e.timeStamp - t0), e.pressure || 0.5];
+  const sx = cv.width / r.width, sy = cv.height / r.height;
+  return [(e.clientX - r.left) * sx, (e.clientY - r.top) * sy, Math.round(e.timeStamp - t0), e.pressure || 0.5];
 }
-cv.addEventListener("pointerdown", (e) => {
-  cv.setPointerCapture(e.pointerId);
-  cur = { pointerType: e.pointerType || "mouse", points: [pt(e)] };
-  draw();
-});
+cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); cur = { pointerType: e.pointerType || "mouse", points: [pt(e)] }; draw(); });
 cv.addEventListener("pointermove", (e) => {
   if (!cur) return;
-  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-  for (const ev of evs) cur.points.push(pt(ev));
+  for (const ev of (e.getCoalescedEvents ? e.getCoalescedEvents() : [e])) cur.points.push(pt(ev));
   draw();
 });
 const end = () => { if (cur) { strokes.push(cur); cur = null; draw(); } };
 cv.addEventListener("pointerup", end);
 cv.addEventListener("pointercancel", end);
 
-function body() {
-  return { target: $("target").value, intent: $("intent").value,
-           canvas: { width: cv.width, height: cv.height }, strokes };
-}
+const body = () => ({ canvas: { width: cv.width, height: cv.height }, strokes });
 async function post(path) {
   if (!strokes.length) { $("status").textContent = "まだ何も書かれていません。"; return null; }
-  $("status").textContent = "採点中…";
+  $("status").textContent = "判定中…";
+  const t = performance.now();
   const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body()) });
   const json = await res.json();
-  $("status").textContent = res.ok ? `完了（${strokes.length}画）` : `エラー ${res.status}`;
+  $("status").textContent = res.ok ? `完了（${strokes.length}画、${Math.round(performance.now() - t)}ms）` : `エラー ${res.status}`;
   return json;
 }
-const LABELS = { stroke_count: "画数", order: "書き順", direction: "運筆方向", shape: "形", balance: "バランス", line: "線質", endings: "止め・はね・払い" };
-const END = { tome: "止め", hane: "はね", harai: "払い", any: "—", unknown: "?" };
-function geoHtml(g) {
-  const rows = Object.entries(g.items).map(([k, v]) =>
-    `<tr><td>${LABELS[k]}</td><td style="width:45%"><div class="bar" style="width:${v}%"></div></td><td class="n">${v}</td></tr>`).join("");
-  const per = g.per_stroke.map(p =>
-    `<tr><td>${p.stroke}画目</td><td>${p.matched_user_stroke ? p.matched_user_stroke + "画目に対応" : "対応なし"}${p.reversed ? "（逆向き）" : ""}</td>` +
-    `<td class="n">${p.shape ?? "-"}</td><td>${END[p.ending.expected]} → ${END[p.ending.detected]}</td></tr>`).join("");
-  return `<table>${rows}</table>
-    <p class="muted">お手本 ${g.ref_stroke_count}画 / あなた ${g.user_stroke_count}画</p>
-    <table><tr><td>お手本</td><td>対応</td><td class="n">形</td><td>終筆（正解 → 判定）</td></tr>${per}</table>`;
+function axisRows(axes) {
+  return Object.entries(axes).map(([k, v]) => {
+    const w = Math.min(Math.abs(v) / 3, 1) * 50, left = v >= 0 ? 50 : 50 - w;
+    return `<tr><td>${AXES[k][1]}</td><td style="width:50%"><div class="bar"><span style="left:${left}%;width:${w}%"></span></div></td><td>${AXES[k][0]}</td><td class="n">${v.toFixed(2)}</td></tr>`;
+  }).join("");
 }
-$("geo").onclick = async () => {
-  const g = await post("/api/judge/geometry"); if (!g) return;
-  $("result").innerHTML = g.detail ? `<pre>${JSON.stringify(g, null, 2)}</pre>` :
-    `<div class="muted">幾何スコア</div><div class="big">${g.total}</div>${geoHtml(g)}`;
-};
-$("full").onclick = async () => {
-  const r = await post("/api/judge/full"); if (!r) return;
+function show(r) {
   if (r.detail) { $("result").innerHTML = `<pre>${JSON.stringify(r, null, 2)}</pre>`; return; }
-  const l = r.llm;
-  const llm = r.degraded && !l.read_as ? `<p class="muted">LLM なし（APIキー未設定または失敗）。幾何スコアのみで採点。</p>` :
-    `<p><b>AIには「${l.read_as ?? "?"}」に見えた</b>（確信度 ${l.confidence ?? "-"}）　印象: ${l.impressions.join("、")}</p>
-     <p>意図スコア: ${l.intent_score ?? "-"}　美しさ: ${l.beauty ? Object.values(l.beauty).join(" / ") : "-"}</p>
-     <p>良い点: ${l.good_point ?? ""}</p><p>講評: ${l.comment ?? ""}</p>
-     <ul>${l.corrections.map(c => `<li>${c.stroke}画目（${c.kind}）: ${c.issue}</li>`).join("")}</ul>`;
-  $("result").innerHTML = `<div class="muted">最終スコア${r.capped ? "（誤読のため上限）" : ""}</div><div class="big">${r.final}</div>
-    ${llm}<p class="muted">時間: 幾何 ${r.timings_ms.geometry}ms / LLM ${r.timings_ms.llm}ms</p>
-    <details><summary>幾何スコア ${r.geometry.total}</summary>${geoHtml(r.geometry)}</details>`;
-};
+  const d = r.debug || {};
+  const imp = d.impression || {};
+  const q = d.quality || {};
+  $("result").innerHTML = `
+    <div class="muted">靴下ID${r.degraded ? "（AIなし）" : ""}</div>
+    <div class="sock">${r.sock_id}</div>
+    <img class="sockimg" src="/api/dev/sock-image/${r.sock_id}" onerror="this.remove()">
+    <p class="comment">${r.comment}</p>
+    <hr>
+    <div class="muted">以下はユーザーには見せない内部の評価</div>
+    <p>品質: ${q.rank ?? "-"}（${q.score ?? "-"}点、幾何評価 ${q.geometry ?? "-"}） / 印象: <b>${LABEL[imp.id] ?? "-"}</b>（候補: ${(imp.candidates || []).map(c => LABEL[c]).join("・")}）</p>
+    ${d.ai_judgement ? `<p class="muted">AIの判断理由: ${d.ai_judgement.impression_reason}</p>` : ""}
+    <table>${imp.axes ? axisRows(imp.axes) : ""}</table>
+    <p class="muted">誤タップとして除外: ${(d.ignored_strokes || []).join(", ") || "なし"} ／ 時間: ${JSON.stringify(d.timings_ms || {})}</p>
+    <details><summary>特徴量</summary><pre>${(d.feature_text || []).join("\n")}</pre></details>
+    <details><summary>debug（全部）</summary><pre>${JSON.stringify(d, null, 2)}</pre></details>`;
+}
+$("geo").onclick = async () => { const r = await post("/api/judge/geometry"); if (r) show(r); };
+$("full").onclick = async () => { const r = await post("/api/judge/full"); if (r) show(r); };
 $("undo").onclick = () => { strokes.pop(); if (!strokes.length) t0 = null; draw(); };
 $("clear").onclick = () => { strokes = []; t0 = null; draw(); $("result").innerHTML = '<p class="muted">ここに結果が出ます。</p>'; };
 $("save").onclick = async () => {
-  const label = window.prompt("ラベル（丁寧 / 普通 / 雑 など）", "") ?? "";
-  const r = await post(`/api/dev/samples?label=${encodeURIComponent(label)}`);
-  if (r && r.saved) $("status").textContent = `保存しました: ${r.saved}`;
+  const qs = new URLSearchParams({ intended: $("intended").value, writer: $("writer").value });
+  if ($("quality").value) qs.set("quality", $("quality").value);
+  const r = await post(`/api/dev/samples?${qs}`);
+  if (r && r.saved) { $("status").textContent = `保存しました: ${r.saved}（AIなしの判定: ${r.sock_id_without_ai}）`; strokes = []; t0 = null; draw(); }
 };
-$("target").onchange = loadRef;
-$("showRef").onchange = draw;
-loadRef();
+draw();
 </script>
 </body>
 </html>
