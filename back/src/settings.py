@@ -14,3 +14,7 @@ DATA_DIR = Path(
 STORE_URL = os.environ.get("ITO_STORE_URL", "").rstrip("/")
 # Worker の返事を待つ秒数
 STORE_TIMEOUT_SECONDS = 10
+
+# シェア用のページに書く、サイトのアドレス（例: https://example.com 。最後の / なし）。
+# 設定されていなければ、リクエストの Host から決める（back/src/share.py の site_url）。
+SITE_URL = os.environ.get("ITO_SITE_URL", "").rstrip("/")

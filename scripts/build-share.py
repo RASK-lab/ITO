@@ -28,8 +28,9 @@ try:
 except ImportError:
     sys.exit("Pillow が見つかりません。'pip install pillow' で入れてから、もう一度実行してください。")
 
-# 本番のアドレス（最後の / なし）。まだ決まっていないので、仮のものを入れている。
-SITE_URL = os.environ.get("ITO_SITE_URL", "https://ito.example").rstrip("/")
+# 本番のアドレス（最後の / なし）。カードの画像は X が外から取りに来るので、
+# ここが本番と違うと、カードに画像が出ない。
+SITE_URL = os.environ.get("ITO_SITE_URL", "https://hackathon-ito-app.team-kutsushita.workers.dev").rstrip("/")
 
 ROOT = Path(__file__).resolve().parent.parent
 SOCKS_JSON = ROOT / "data" / "socks" / "socks.json"

@@ -3,7 +3,7 @@
 フロントエンドとバックエンドの間の取り決めです。実装の正は `back/src/` で、起動中は http://localhost:8000/docs でも確認できます。
 
 - パスはすべて `/api/` から始まる。フロントからは相対パスで呼ぶ。
-- 送る内容と返る内容は JSON。項目名は `snake_case`。ただし、線のデータの項目（`pointerType` など）は、分析側の資料の名前に合わせている。
+- 送る内容と返る内容は JSON。項目名は `snake_case`。ただし、線のデータの項目（`pointerType` など）は、分析側の資料の名前に合わせている。シェアの API（下の「シェア」）は、画像と HTML もやり取りする。
 
 ## 一覧
 
@@ -183,3 +183,84 @@ API の一覧は [api-list.md](api-list.md) にまとめています（実装済
 - 分析結果（くつした、読み解き、メッセージ、似ているフォント）を返す API の形。いまは仮に、確定の応答に `sock` と `message` を入れて返している。分析に時間がかかるようになったとき、同じ応答で待たせるか、別の API で取りに行くか。
 - お題の字（`target`）と意図（`intent`）を ITO に入れるか。いまは `target` を `"と"` の固定で送り、`intent` は送っていない。
 - 画像を誰が描くか。いまはフロントが描いて `image` で送っている。サーバーが線のデータから描く方式にすると、`image`・`width`・`height` は要らなくなる。
+
+## シェア（結果ごとのカード）
+
+X に投稿したときに、その人が書いた「と」とくつしたが入った画像を、カードとして出すための API です。実装は `back/src/share.py`。
+
+仕組み: X などは、投稿されたアドレスのページを読みに来て、そこに書いてある画像（`og:image`）をカードとして出します。結果 1 件ごとにアドレス（`/api/share/<id>`）を作り、その結果の画像をカードに指定します。
+
+1. シェアの画面を開くと、フロントがカード用の横長の画像（1200 × 630 の JPEG）を作り、`PUT /api/drawings/{id}/card` で預ける。
+2. 預け終わると、フロントは、X のリンクに入れるアドレスを `<サイトのアドレス>/api/share/<id>` にする。預け終わる前と、失敗したときは、くつしたごとの固定のページ（`/s/worn-01/?v=2`。[socks.md](socks.md)）のまま。
+3. 投稿されると、X が `GET /api/share/{id}` を読み、書いてある `GET /api/cards/{id}.jpg` を取りに来る。
+
+`{id}` は、どれも記録の ID（確定の応答の `id`。0〜9 と a〜f の 32 文字）です。パスがどれも `/api/` で始まるのは、本番で Worker がバックエンドに渡すのが `/api/` だけのためです。
+
+### PUT /api/drawings/{id}/card
+
+送る内容: 本文に、JPEG の画像そのもの（`Content-Type: image/jpeg`。JSON ではない）。
+
+| 決まり | 内容 |
+|---|---|
+| 形式 | JPEG（先頭のバイトを確かめ、Pillow で最後まで展開できることを確かめる） |
+| 大きさ | 1200 × 630 ピクセルちょうど。フロント（`front/src/shareCard.ts` の `X_CARD_WIDTH`・`X_CARD_HEIGHT`）とバックエンド（`back/src/share.py` の `CARD_WIDTH`・`CARD_HEIGHT`）で同じ値にする |
+| 本文の上限 | 1,000,000 バイト（フロントが送るのは 40〜200KB ほど） |
+
+返る内容（200）:
+
+```json
+{ "share_path": "/api/share/c2e104adb43642e7b3d5477789cab7fd" }
+```
+
+- `share_path` は、シェア用のページのパス。フロントは、画面を開いているアドレス（`window.location.origin`）を前に付けて、X のリンクに入れる。
+- 画像は、置き場に `cards/<id>.jpg` として置く（[data.md](data.md)）。受け取った中身のまま置く（作り直さない）。
+- **同じ `id` に 2 回目以降が送られても、置き換えない**（最初の画像を残したまま、同じ 200 を返す）。記録の ID はシェア用のアドレスに入っていて、投稿を見た人なら誰でも知っているので、あとから別の画像に差し替えられないようにするため。
+- くつしたの名前などは送らせない。台帳に `id` の記録があることだけを確かめる。
+
+失敗:
+
+| 状態 | 場合 |
+|---|---|
+| 404 | 台帳に `id` の記録がない（または、その記録のくつしたが、くつしたの台帳にない） |
+| 413 | 本文が大きすぎる。読み込みの途中で打ち切る |
+| 422 | `id` の形が違う、本文が空、JPEG でない、JPEG として読めない、1200 × 630 でない |
+| 500 | 台帳や置き場を読み書きできなかった |
+
+### GET /api/cards/{id}.jpg
+
+預かったカードの画像を返します（200、`Content-Type: image/jpeg`）。`Cache-Control: public, max-age=604800`（1 週間）と `X-Content-Type-Options: nosniff` を付けます。
+
+| 状態 | 場合 |
+|---|---|
+| 404 | `id` の形が違う、または、その `id` のカードの画像がない |
+| 500 | 置き場を読めなかった |
+
+### GET /api/share/{id}
+
+シェア用のページ（HTML）を返します（200、`Content-Type: text/html`）。形は、くつしたごとの固定のページ（`front/public/s/*/index.html`）と同じです。
+
+```html
+<title>くつした「穴あき灰色」 | ITO</title>
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="ITO" />
+<meta property="og:title" content="くつした「穴あき灰色」" />
+<meta property="og:description" content="灰色のウール靴下はかかとに大きな穴が開き、縁から糸が垂れている。" />
+<meta property="og:url" content="https://（サイトのアドレス）/api/share/c2e1…" />
+<meta property="og:image" content="https://（サイトのアドレス）/api/cards/c2e1….jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<script>location.replace("/");</script>
+```
+
+- 題と説明は、台帳の記録（`sock_id`）から引いたくつしたの、名前（`name`）と説明（`comment`）。フロントからは受け取らない。HTML に入れる値は、すべてエスケープする。
+- 人が開くと、最初の画面（`/`）に移る。カードを作るロボットはスクリプトを動かさないので、ページに残り、カードの指定を読む。
+- 記録やカードの画像がない `id`、形の違う `id` では、カードの指定がなく、最初の画面へ移すだけのページを 404 で返す。台帳や置き場を読めなかったときは、同じページを 500 で返す。
+
+サイトのアドレス（`og:url` と `og:image` に書く絶対 URL の先頭）の決め方（`back/src/share.py` の `site_url`）:
+
+| 順 | 場合 | アドレス |
+|---|---|---|
+| 1 | 環境変数 `ITO_SITE_URL` がある | その値（最後の `/` は取る） |
+| 2 | リクエストの `Host` が、公開しているドメインの形（`.` を含む名前で、IP アドレスでない） | `https://<Host>`。本番では、Worker がリクエストをそのままコンテナに渡すので、`Host` は公開しているドメインになる。コンテナには http で届くので、https に決め打ちする |
+| 3 | それ以外（手元。`Host` が `localhost:8000` や、Vite の中継ごしの `backend:8000`） | `http://localhost:5173` |
