@@ -78,11 +78,13 @@ async def judge(to_png: bytes, quantitative_json: str) -> ToJudgement | None:
     ], ToJudgement)
 
 
-async def comment(to_png: bytes, sock_image: Path | None, user_text: str) -> SockComment | None:
-    """AI② コメント。靴下の画像があれば一緒に渡す。"""
+async def comment(to_png: bytes, sock_image: Path | str | None, user_text: str) -> SockComment | None:
+    """AI② コメント。靴下の画像（ローカルファイルまたは URL）があれば一緒に渡す。"""
     content = [image_block(to_png)]
-    if sock_image is not None:
+    if isinstance(sock_image, Path):
         content.append(file_image_block(sock_image))
+    elif isinstance(sock_image, str):
+        content.append({"type": "image", "source": {"type": "url", "url": sock_image}})
     content.append({"type": "text", "text": user_text})
     return await _parse(COMMENT_SYSTEM, content, SockComment, model=settings.comment_model)
 

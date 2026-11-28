@@ -61,7 +61,8 @@ async def judge_full(req: JudgeRequest) -> JudgeResponse:
     c = None
     if j is not None:
         sid = d["sock_id"]
-        c = await llm.comment(png, catalog.image_path(sid), comment_user_text(
+        sock_image = catalog.image_source(sid)
+        c = await llm.comment(png, sock_image, comment_user_text(
             sock_label=catalog.label(sid),
             impression_label=IMPRESSION_LABELS[d["impression"]],
             quality_rank=d["quality_rank"],
@@ -69,7 +70,7 @@ async def judge_full(req: JudgeRequest) -> JudgeResponse:
             judge_reason=j.impression_reason,
             feature_text=a.axes.reasons.get(d["impression"], []),
             description=catalog.description(sid),
-            has_image=catalog.image_path(sid) is not None,
+            has_image=sock_image is not None,
         ))
     t3 = time.perf_counter()
 
@@ -77,7 +78,7 @@ async def judge_full(req: JudgeRequest) -> JudgeResponse:
     degraded = j is None or c is None
     extra = {
         "ai_judgement": j.model_dump() if j is not None else None,
-        "sock_image_used": str(catalog.image_path(d["sock_id"])) if catalog.image_path(d["sock_id"]) else None,
+        "sock_image_used": str(catalog.image_source(d["sock_id"])) if catalog.image_source(d["sock_id"]) else None,
         "timings_ms": {**a.timings, "ai_judge": int((t2 - t1) * 1000), "ai_comment": int((t3 - t2) * 1000)},
     }
     return JudgeResponse(

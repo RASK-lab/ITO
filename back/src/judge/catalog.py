@@ -7,6 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from .analysis.axes import IMPRESSION_LABELS, IMPRESSIONS
+from .settings import settings
 
 CATALOG_DIR = Path(__file__).resolve().parent / "catalog"
 IMAGES_DIR = CATALOG_DIR / "images"
@@ -48,6 +49,16 @@ def image_path(sid: str) -> Path | None:
         p = IMAGES_DIR / f"{sid}{ext}"
         if p.is_file():
             return p
+    return None
+
+
+def image_source(sid: str) -> Path | str | None:
+    """AI② に渡す靴下画像。ローカルの画像があればそれ、無ければ本番の URL、どちらも無ければ None。"""
+    local = image_path(sid)
+    if local is not None:
+        return local
+    if settings.sock_image_base_url:
+        return f"{settings.sock_image_base_url.rstrip('/')}/{sid}.png"
     return None
 
 

@@ -37,6 +37,8 @@ class Settings:
     llm_daily_limit: int = int(os.environ.get("LLM_DAILY_LIMIT", "3000"))
     llm_timeout_s: float = float(os.environ.get("LLM_TIMEOUT_S", "15"))
     dev: bool = os.environ.get("DEV", "0") == "1"
+    # 本番で靴下画像を置く場所の URL（例: R2 の公開 URL）。設定すると AI② は {URL}/{靴下ID}.png を読む
+    sock_image_base_url: str | None = os.environ.get("SOCK_IMAGE_BASE_URL") or None
 
     @property
     def llm_enabled(self) -> bool:
