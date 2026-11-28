@@ -9,10 +9,12 @@ import {
 type Props = {
   /** 「手紙を書く」が押されたとき。name は入力されたまま（空のこともある）。 */
   onStart: (name: string) => void;
+  /** 「靴下図鑑」が押されたとき。 */
+  onCollection: () => void;
 };
 
 /** 最初の画面。ユーザーネームを入れて、書く画面へ進む。 */
-export function StartPage({ onStart }: Props) {
+export function StartPage({ onStart, onCollection }: Props) {
   // 前に入れた名前があれば、入った状態で始める
   const [name, setName] = useState(() => loadUserName() ?? "");
 
@@ -38,6 +40,9 @@ export function StartPage({ onStart }: Props) {
         />
         <button type="submit">手紙を書く</button>
       </form>
+      <button type="button" onClick={onCollection} className="collection-link">
+        靴下図鑑を見る
+      </button>
     </main>
   );
 }
